@@ -936,6 +936,35 @@ table.dt td.tagc{padding:6px 7px}
   transition:.15s;white-space:nowrap}
 .verbanner button:hover{background:#fdf4e2;border-color:#d9bd7f;color:#6b4f10}
 
+/* ---------- SKU 弹窗：排序 + 筛选 ---------- */
+table.skmt thead{position:sticky;top:0;z-index:4;background:#f4f8fd}
+table.skmt thead th{position:static}
+table.skmt th.srt{cursor:pointer;user-select:none}
+table.skmt th.srt:hover{background:#e9f1fe;color:#2f5bd7}
+table.skmt th.srt.on{color:#1f4bc4;background:#eaf0fe}
+table.skmt th .sk-ar{font-size:8px;margin-left:3px;vertical-align:1px}
+table.skmt tr.skf td{position:sticky;z-index:4;background:#f8fafd;padding:3px 5px;
+  border-bottom:1px solid #e3ebf8}
+table.skmt tr.skf td:nth-child(1){left:0}
+table.skmt tr.skf input{width:100%;min-width:54px;box-sizing:border-box;border:1px solid #e2eaf7;
+  border-radius:5px;padding:3px 6px;font-family:inherit;font-size:11px;color:var(--ink);
+  background:#fff;outline:none;transition:border-color .12s,box-shadow .12s}
+table.skmt tr.skf input:focus{border-color:#9db8ec;box-shadow:0 0 0 2px rgba(47,91,215,.13)}
+table.skmt tr.skf input::placeholder{color:#bcc7d8}
+.skm-head .skm-tip{margin-left:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.skm-head .skm-f{margin-left:auto;display:flex;gap:7px;align-items:center;flex:none;padding-left:10px}
+.skm-fbtn{border:1px solid #d6e0f4;background:#fff;border-radius:7px;padding:3px 10px;font-family:inherit;
+  font-size:11.5px;color:#3d4d68;cursor:pointer;font-weight:600;transition:.14s}
+.skm-fbtn:hover{border-color:#b9cdf0;color:#1f4bc4}
+.skm-fbtn.on{background:#eaf0fe;border-color:#b9cdf0;color:#1f4bc4}
+.skm-clr{border:0;background:transparent;color:#2f5bd7;font-family:inherit;font-size:11.5px;
+  cursor:pointer;padding:3px 2px;font-weight:600}
+.skm-clr:hover{text-decoration:underline}
+
+/* 排序箭头更清晰 */
+table.skmt th.srt.on .sk-ar{color:#1f4bc4;font-size:9px;margin-left:4px}
+table.skmt th.srt .sk-ar{opacity:.9}
+
 </style>
 </head>
 <body>
@@ -1421,7 +1450,10 @@ const TIP_SKU={
   invP:'平台仓「可销售展示」库存。断货 / 压货 / 可售天数 / 僵尸库存一律按此口径',
   invS:'自发仓可销售展示库存（不含平台仓）',
   inv:'总库存＝平台仓＋自发仓。仅作参考，异常判定不使用此列',
-  days:'平台仓可售天数＝Σ平台仓库存 ÷ Σ平台仓 7DMS。>70 天压货，<30 天紧张；库存 ≤0 直接判断货'
+  days:'平台仓可售天数＝Σ平台仓库存 ÷ Σ平台仓 7DMS。>70 天压货，<30 天紧张；库存 ≤0 直接判断货',
+  tagR:'预测打标：≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / <80% 严重低达 / 无预测。按 SKU 的达成率分档',
+  tagP:'利润率打标：≤0% 负毛利 / <8% 低毛利 / 8–13% 正常毛利 / >13% 高毛利 / 无数据。按 SKU 的业务毛利率分档',
+  tagD:'可售天数打标：断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 无动销。按平台仓可售天数分档'
 };
 const TIP_DIM={
   n:'该维度下命中的 SKU 个数',
@@ -1502,51 +1534,189 @@ function closeSkuList(){
   const m=document.getElementById('skuModal');
   if(m) m.classList.remove('on');
 }
+/* ---------- SKU 明细弹窗：列排序 + 列筛选 ---------- */
+const SKM={label:'',rows:[],sort:'q4',dir:-1,fs:true,f:{}};
+let skmTimer=null;
+const SKM_TGT={sku:'包含',asin:'包含',bg:'包含',c3:'包含',own:'包含',sc:'包含',
+  q4:'>100',f4:'>0',rate:'<80',pr:'<0',adp:'>8',whp:'>2',acos:'>10',
+  invP:'<=0',invS:'>0',inv:'>500',days:'>70'};
+function skmVal(r,k){
+  if(k==='rate') return r.f4>0?r.q4/r.f4:null;
+  if(k==='days') return r.d7>0?r.invP/r.d7:null;
+  return r[k];
+}
+function skmActive(){
+  return Object.keys(SKM.f||{}).filter(function(k){ return String(SKM.f[k]||'').trim(); });
+}
+/* 先筛后排：返回当前应显示的 SKU 列表 */
+function skmList(){
+  const ks=skmActive();
+  let out=SKM.rows;
+  if(ks.length){
+    out=out.filter(function(r){
+      return ks.every(function(k){
+        const expr=String(SKM.f[k]).trim();
+        const tp=SKU_TYPES[k]||'num';
+        const raw=skmVal(r,k);
+        if(tp==='txt') return raw!=null && String(raw).toLowerCase().indexOf(expr.toLowerCase())>=0;
+        if(raw==null) return false;
+        const v=(tp==='pct')?Math.round(raw*1000)/10:raw;
+        const fn=fParse(expr);
+        return fn?fn(v):true;
+      });
+    });
+  }
+  const key=SKM.sort, dir=SKM.dir;
+  const arr=out.slice();
+  arr.sort(function(a,b){
+    let x,y;
+    if(key==='rate'){ x=a.f4>0?a.q4/a.f4:null; y=b.f4>0?b.q4/b.f4:null; }
+    else if(key==='days'){ x=a.d7>0?a.invP/a.d7:null; y=b.d7>0?b.invP/b.d7:null; }
+    else { x=a[key]; y=b[key]; }
+    const xv=(x==null||x!==x), yv=(y==null||y!==y);
+    if(xv&&yv) return 0;
+    if(xv) return 1;          /* 空值恒垫底，不随方向翻转 */
+    if(yv) return -1;
+    if(typeof x==='string') return x.localeCompare(y)*dir;
+    return (x-y)*dir;
+  });
+  return arr;
+}
+function skmSort(k){
+  if(!k) return;
+  if(SKM.sort===k) SKM.dir=(SKM.dir===1?-1:1);
+  else { SKM.sort=k; SKM.dir=-1; }
+  skmPaint(true);
+}
+function skmHeadHTML(){
+  return SKU_COLS.map(function(c){
+    const k=c[0], isTag=(c[2]==='t');
+    const cls=(c[2]==='l'?'l':(isTag?'tagc':''));
+    if(isTag) return '<th data-k="'+k+'" class="'+cls+'">'+c[1]+'</th>';
+    const on=(SKM.sort===k);
+    const ar=on?'<span class="sk-ar">'+(SKM.dir===1?'▲':'▼')+'</span>':'';
+    return '<th data-k="'+k+'" data-sk="'+k+'" class="srt '+cls+(on?' on':'')+'">'+c[1]+ar+'</th>';
+  }).join('');
+}
+function skmFilHTML(){
+  if(!SKM.fs) return '';
+  return '<tr class="skf">'+SKU_COLS.map(function(c){
+    const k=c[0];
+    if(c[2]==='t') return '<td></td>';
+    return '<td><input data-sfk="'+k+'" value="'+ESCA(SKM.f[k]||'')+'" placeholder="'+(SKM_TGT[k]||'')+'"></td>';
+  }).join('')+'</tr>';
+}
+function skmPaint(rebuildHead){
+  const mask=document.getElementById('skuModal'); if(!mask) return;
+  const body=mask.querySelector('.skm-body');
+  const sy=body?body.scrollTop:0;
+  const list=skmList();
+  const m=M(agg(list));
+  const total=SKM.rows.length, nf2=skmActive().length;
+
+  if(rebuildHead!==false){
+    const thead=mask.querySelector('table.skmt thead');
+    if(thead){
+      thead.innerHTML='<tr>'+skmHeadHTML()+'</tr>'+skmFilHTML();
+      applyColTips(mask, TIP_SKU);   /* 表头是重建的，口径提示要重新挂 */
+    }
+    const fb=mask.querySelector('#skmFbtn');
+    if(fb){ fb.className='skm-fbtn'+(SKM.fs?' on':''); fb.textContent='筛选'+(nf2?' '+nf2:''); }
+    const cl=mask.querySelector('#skmClear');
+    if(cl) cl.style.display=nf2?'':'none';
+  }
+  const cnt=mask.querySelector('#skmN');
+  if(cnt) cnt.innerHTML='显示 <b>'+nf(list.length)+'</b> / 共 '+nf(total)+' 个 SKU';
+
+  const tb=mask.querySelector('tbody');
+  if(tb){
+    if(!list.length){
+      tb.innerHTML='<tr><td colspan="'+SKU_COLS.length+'" style="padding:30px;text-align:center;color:var(--muted)">'+
+        '没有符合筛选条件的 SKU —— 点右上「清除筛选」恢复全部 '+nf(total)+' 个</td></tr>';
+    }else{
+      tb.innerHTML=list.map(function(r){
+        return '<tr data-sku="'+ESCA(r.sku)+'">'+SKU_COLS.map(function(c){ return skuMCell(r,c[0]); }).join('')+'</tr>';
+      }).join('');
+    }
+  }
+  const ft=mask.querySelector('.skm-foot');
+  if(ft){
+    ft.innerHTML='<span>合计 <b>'+nf(m.n)+'</b> 个 SKU</span>'+
+      '<span>4周订单 <b>'+nf(m.q)+'</b></span>'+
+      '<span>最新版达成 <b>'+pct(m.rate)+'</b></span>'+
+      '<span>利润率 <b>'+pct(m.pr)+'</b></span>'+
+      '<span>平台仓库存 <b>'+nf(m.invP)+'</b></span>'+
+      '<span>可售 <b>'+(m.days==null?'—':nf(m.days,1)+' 天')+'</b></span>'+
+      '<span class="sp"></span>'+
+      '<button class="expbtn mini" id="skmExp">导出当前结果</button>';
+  }
+  if(body) body.scrollTop=sy;
+}
+function closeSkuList(){
+  const m=document.getElementById('skuModal');
+  if(m) m.classList.remove('on');
+}
 function openSkuList(label, rows){
-  const list=(rows||[]).slice().sort(function(a,b){ return (b.q4||0)-(a.q4||0); });
+  SKM.label=label||'';
+  SKM.rows=(rows||[]).slice();
+  SKM.sort='q4'; SKM.dir=-1; SKM.f={}; SKM.fs=true;
+
   let mask=document.getElementById('skuModal');
   if(!mask){
     mask=document.createElement('div');
     mask.className='skm-mask'; mask.id='skuModal';
     document.body.appendChild(mask);
-    mask.addEventListener('click', function(e){ if(e.target===mask) closeSkuList(); });
-    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeSkuList(); });
-  }
-  const m=M(agg(list));
-  let h='<div class="skm"><div class="skm-head">'+
-    '<b>'+ESCA(label)+'</b>'+
-    '<span class="skm-n">共 <b>'+nf(list.length)+'</b> 个 SKU</span>'+
-    '<span class="skm-tip">列与 04 SKU 明细一致 · 点击行看单品档案 · Esc 关闭</span>'+
-    '<button class="skm-x" id="skmX" title="关闭">×</button></div>';
-  h+='<div class="skm-body"><table class="skmt"><thead><tr>'+
-     SKU_COLS.map(function(c){ return '<th data-k="'+c[0]+'" class="'+(c[2]==='l'?'l':(c[2]==='t'?'tagc':''))+'">'+c[1]+'</th>'; }).join('')+
-     '</tr></thead><tbody>';
-  if(!list.length){
-    h+='<tr><td colspan="'+SKU_COLS.length+'" style="padding:28px;color:var(--muted)">没有符合条件的 SKU</td></tr>';
-  }else{
-    list.forEach(function(r){
-      h+='<tr data-sku="'+ESCA(r.sku)+'">'+SKU_COLS.map(function(c){ return skuMCell(r,c[0]); }).join('')+'</tr>';
+    mask.addEventListener('click', function(e){
+      if(e.target===mask){ closeSkuList(); return; }
+      if(e.target.closest('#skmX')){ closeSkuList(); return; }
+      if(e.target.closest('#skmFbtn')){ SKM.fs=!SKM.fs; skmPaint(true); return; }
+      if(e.target.closest('#skmClear')){ SKM.f={}; skmPaint(true); return; }
+      if(e.target.closest('#skmExp')){
+        const name=String(SKM.label).replace(/[\/:*?"<>|]/g,'_');
+        exportCsv(skmList(), name, false);
+        return;
+      }
+      const th=e.target.closest('th[data-sk]');
+      if(th){ skmSort(th.dataset.sk); return; }
+      const tr=e.target.closest('tbody tr[data-sku]');
+      if(tr){ openSku(tr.dataset.sku); }
+    });
+    mask.addEventListener('input', function(e){
+      const inp=e.target.closest('input[data-sfk]');
+      if(!inp) return;
+      const k=inp.dataset.sfk;
+      SKM.f[k]=inp.value;
+      clearTimeout(skmTimer);
+      skmTimer=setTimeout(function(){
+        const caret=inp.selectionStart;
+        skmPaint(true);
+        const again=mask.querySelector('input[data-sfk="'+k+'"]');
+        if(again){ again.focus(); try{ again.setSelectionRange(caret,caret); }catch(err){} }
+      },260);
+    });
+    mask.addEventListener('keydown', function(e){
+      if(e.key==='Enter' && e.target.closest('input[data-sfk]')){ e.preventDefault(); e.target.blur(); }
+    });
+    /* Esc 全局只注册一次，弹窗打开时才响应 */
+    document.addEventListener('keydown', function(e){
+      if(e.key!=='Escape') return;
+      const mm=document.getElementById('skuModal');
+      if(mm && mm.classList.contains('on')) closeSkuList();
     });
   }
-  h+='</tbody></table></div>';
-  h+='<div class="skm-foot">'+
-     '<span>合计 <b>'+nf(m.n)+'</b> 个 SKU</span>'+
-     '<span>4周订单 <b>'+nf(m.q)+'</b></span>'+
-     '<span>最新版达成 <b>'+pct(m.rate)+'</b></span>'+
-     '<span>利润率 <b>'+pct(m.pr)+'</b></span>'+
-     '<span>平台仓库存 <b>'+nf(m.invP)+'</b></span>'+
-     '<span>可售 <b>'+(m.days==null?'—':nf(m.days,1)+' 天')+'</b></span>'+
-     '<span class="sp"></span>'+
-     '<button class="expbtn mini" id="skmExp">导出 CSV</button></div></div>';
-  mask.innerHTML=h;
+  mask.innerHTML='<div class="skm">'+
+    '<div class="skm-head"><b>'+ESCA(label)+'</b>'+
+      '<span class="skm-n" id="skmN"></span>'+
+      '<span class="skm-tip">点击列名排序 · 点行看单品档案 · Esc 关闭</span>'+
+      '<span class="skm-f"><button class="skm-fbtn on" id="skmFbtn">筛选</button>'+
+        '<button class="skm-clr" id="skmClear" style="display:none">清除筛选</button></span>'+
+      '<button class="skm-x" id="skmX" title="关闭">×</button></div>'+
+    '<div class="skm-body"><table class="skmt"><thead></thead><tbody></tbody></table></div>'+
+    '<div class="skm-foot"></div></div>';
   mask.classList.add('on');
-  const x=mask.querySelector('#skmX'); if(x) x.onclick=closeSkuList;
-  const ex=mask.querySelector('#skmExp');
-  if(ex) ex.onclick=function(){ exportCsv(list, String(label).replace(/[\/:*?"<>|]/g,'_'), false); };
+  skmPaint(true);
   applyColTips(mask, TIP_SKU);
-  mask.querySelectorAll('tbody tr[data-sku]').forEach(function(tr){
-    tr.onclick=function(){ openSku(tr.dataset.sku); };
-  });
+  const body=mask.querySelector('.skm-body'); if(body) body.scrollTop=0;
 }
 document.addEventListener('click', function(e){
   const t=e.target.closest('[data-af]');

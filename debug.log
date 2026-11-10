@@ -1,0 +1,3 @@
+[20060:10892:1110/122927.221:WARNING:t_skinfilemap.cpp(68)] SGRenderLog:CheckUpdate newMem.OpenMem Suc, szNewMem:Local\sgime_skin.v5.filemap.sogouime
+[20060:10892:1110/122927.221:WARNING:t_skinfilemap.cpp(70)] SGRenderLog:CheckUpdate finish: old version:1
+[20060:10892:1110/122927.221:WARNING:t_skinfilemap.cpp(72)] SGRenderLog:CheckUpdate finish: new version:5
