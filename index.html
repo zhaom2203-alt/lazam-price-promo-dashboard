@@ -1555,6 +1555,7 @@ let ANO_FOCUS=null;     /* 当前生效的异常定位 {label, pred} */
 function regAf(label, pred){ AF.push({label:label, pred:pred}); return AF.length-1; }
 /* rows: 用于保证「点击后看到的数量 = 卡片上的数量」 */
 function drillNum(rows, label, pred, inner, modal){
+  if(modal===undefined) modal=true;   /* v45：默认弹窗，不再下钻到 SKU 末层 */
   let n=0;
   try{ n=rows.filter(pred).length; }catch(e){ n=0; }
   if(!n) return inner;
@@ -1911,14 +1912,16 @@ function renderOverview(){
   const overP =r=>r.f4>0 && r.q4/r.f4>=1.1;
   const negP  =r=>r.pr!=null && r.pr<0;
   const feeP  =r=>r.adp!=null && r.adp>0.06;
-  const pileP =r=>FL(r).pile;
+  /* 与 M() 里的 pile 计数保持同一条件：con=1 或 7DMS>0 且可售>70 天。
+     FL(r).pile 把 d7=0 但有库存的零动销 SKU 也算压货（d=999），会让「显示 269 → 弹窗 321」对不上 */
+  const pileP =r=>r.con===1 || (r.d7>0 && (r.invP||0)/r.d7>70);
   const oosP  =r=>FL(r).oos;
   $('#s1scope').textContent=`${nf(m.n)} 个 SKU`;
   $('#s1meta').innerHTML=[
     `<span class="mtag">4周订单 <b>${nf(m.q)}</b></span>`,
     `<span class="mtag">最新版预测 <b>${nf(m.f,0)}</b></span>`,
     `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`,
-    `<span class="mtag">带<span style="border-bottom:1px dashed #9fb6e6">虚线的数字</span>可点击 → 定位 SKU</span>`
+    `<span class="mtag">带<span style="border-bottom:1px dashed #9fb6e6">虚线的数字</span>可点击 → 弹窗看这批 SKU</span>`
   ].join('');
 
   /* tone：语义色条 —— up＝红（超达/断货等强信号）｜down＝绿（未达/亏损）｜warn＝琥珀（费比/压货） */
@@ -3166,7 +3169,7 @@ function renderFoot(){
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>明细与导出</b>：SKU 明细位于「04 维度下钻」末层，受全局筛选与下钻路径共同约束，导出支持「当前范围全部 / 当前页 / 精简列」；<b>每个维度层右上角也可导出</b>——「本层汇总」出该层每个分组一行的汇总表（含合计行），「本层 SKU 明细」出该层范围内的 SKU 明细。CSV 均为 UTF-8 BOM（Excel 直接打开）。点击任意行弹出该 SKU 全字段详情。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
-  <div><b>异常下钻</b>：01 诊断条 / KPI / 洞察卡点击后跳到「04 维度下钻」的 SKU 末层（顶部显示定位条件，可一键清除）；<b>02 的 7 个异常 KPI、两张交叉矩阵格子点击后直接弹窗</b>，列出这批 SKU 的全字段明细（17 列与 04 SKU 明细一致），支持导出 CSV，Esc 或点遮罩关闭。</div>
+  <div><b>异常下钻</b>：<b>01 诊断条 / KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
   <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
   <div><b>数据范围</b>：仅巴西站亚马逊（BR · AMZ），已剔除多渠道与墨西哥站数据；业务组 / SKU状态 / 场景 / 搜索为全局筛选；「02 各异常点」点击只弹窗、不改变全局范围；「04 维度下钻」为逐级下钻，三者叠加生效。页面所有数字均为当前范围的实时重算结果，非静态快照。</div>`;
 }
