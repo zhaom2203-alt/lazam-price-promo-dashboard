@@ -1021,6 +1021,30 @@ table.dt tr.filrow input.fin:hover::-webkit-calendar-picker-indicator{opacity:.8
 table.dt tr.filrow td.fc{width:30px;min-width:30px}
 table.dt tr.filrow input.fin[data-k="__g"],table.dt tr.filrow input.fin[data-k="sc"]{min-width:84px}
 
+/* ---------- 03 场景表：按维度拆分（v46） ---------- */
+.scnctl{margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.scnctl .cl{font-size:11px;color:var(--muted)}
+.scnctl select{font-family:inherit;font-size:11.5px;color:var(--ink);padding:3px 6px;
+  border:1px solid #dbe4f4;border-radius:6px;background:#fff;cursor:pointer;outline:none}
+.scnctl select:hover{border-color:#b9cdf0}
+.scnctl .scnbtn{font-size:11.5px;color:#2f5bd7;border:1px solid #d6e0f4;background:#fff;
+  border-radius:6px;padding:3px 10px;cursor:pointer;white-space:nowrap}
+.scnctl .scnbtn:hover{background:#eef4ff;border-color:#b9cdf0}
+/* 场景行 / 子行 */
+table.dt tr.scnrow>td{background:#f4f8fd;font-weight:600;border-bottom:1px solid #e6eefa}
+table.dt tr.scnrow:hover>td{background:#ecf3fe}
+table.dt tr.scnrow .scncar{display:inline-block;width:14px;color:#5b78b8;cursor:pointer;
+  font-size:10px;margin-right:2px;user-select:none}
+table.dt tr.scnrow .scncar:hover{color:#2f5bd7}
+table.dt tr.scnrow .scnn{font-size:10.5px;color:#8a9ab5;font-weight:400;margin-left:8px}
+table.dt tr.scnkid>td{background:#fff;border-bottom:1px solid #f2f6fc;font-weight:400}
+table.dt tr.scnkid:hover>td{background:#fbfdff}
+table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
+.scnpg{font-family:inherit;font-size:11.5px;padding:3px 12px;border:1px solid #dbe4f4;
+  background:#fff;border-radius:6px;color:var(--ink2);cursor:pointer}
+.scnpg:hover:not(:disabled){border-color:#b9cdf0;color:#1f4bc4}
+.scnpg:disabled{opacity:.4;cursor:default}
+
 </style>
 </head>
 <body>
@@ -1169,7 +1193,7 @@ table.dt tr.filrow input.fin[data-k="__g"],table.dt tr.filrow input.fin[data-k="
           <div class="btitle"><span class="bnum">03</span><h2>场景策略分布</h2><span class="cnt" id="s2scope"></span></div>
           <div class="bmeta"><span class="mtag">场景口径：<b>最新标签</b> ｜ 点击行联动筛选</span></div>
         </div>
-        <div class="subhead"><span>场景 × 达成 / 毛利 / 库存</span></div>
+        <div class="subhead"><span>场景 × 达成 / 毛利 / 库存</span><span class="scnctl" id="scnCtl"></span></div>
         <div id="sceneTable"></div>
         <div class="tnote" id="sceneNote"></div>
       </section>
@@ -1428,7 +1452,8 @@ function rowsAt(i){
 }
 function groupBy(rows,f){
   const m=new Map();
-  for(const r of rows){ const k=r[f]||'未分类'; let g=m.get(k); if(!g){g=[];m.set(k,g);} g.push(r); }
+  const key=r=>(typeof f==='function'?f(r):r[f])||'未分类';
+  for(const r of rows){ const k=key(r); let g=m.get(k); if(!g){g=[];m.set(k,g);} g.push(r); }
   return [...m.entries()].map(([k,v])=>({k,rows:v,m:M(agg(v))}));
 }
 
@@ -2146,50 +2171,281 @@ function renderTrend(m){
   $('#trendSel').value=trendMode;
 }
 
-/* ---------- 02 ---------- */
+/* ---------- 03 场景策略分布（可按维度拆分） ---------- */
+const SCN={dim:'', mode:'nest', exp:{}, page:1, size:100};
+const SCN_DIMS=[['','不拆分'],['bu','BU'],['own','销售负责人'],['lst','国家Listing'],['sku','SKU']];
+const SCN_COLS=[
+  {k:'n',     t:'SKU数'},
+  {k:'np',    t:'SKU占比'},
+  {k:'q',     t:'4周订单'},
+  {k:'qp',    t:'订单占比'},
+  {k:'f',     t:'4周预测'},
+  {k:'rate',  t:'4周累计达成·最新版'},
+  {k:'tagR',  t:'预测打标'},
+  {k:'rateL1',t:'最新周达成·最新版'},
+  {k:'wrateL1',t:'最新周达成·加权'},
+  {k:'wrate4',t:'4周累计达成·加权'},
+  {k:'gap',   t:'周均缺口'},
+  {k:'pr',    t:'利润率'},
+  {k:'tagP',  t:'利润率打标'},
+  {k:'adp',   t:'广告占比'},
+  {k:'whp',   t:'仓储占比'},
+  {k:'acos',  t:'Acos'},
+  {k:'invp',  t:'总库存占比'},
+  {k:'invP',  t:'平台仓库存'},
+  {k:'invS',  t:'自发仓库存'},
+  {k:'days',  t:'平台仓可售天数'},
+  {k:'tagD',  t:'可售天数打标'}
+];
+
+function scnCell(c,m,ctx,D){
+  switch(c.k){
+    case 'n':      return '<td>'+D(nf(m.n))+'</td>';
+    case 'np':     return '<td>'+pct(ctx.totN?m.n/ctx.totN:null)+'</td>';
+    case 'q':      return '<td>'+D('<b>'+nf(m.q)+'</b>')+'</td>';
+    case 'qp':     return '<td>'+pct(ctx.totQ?m.q/ctx.totQ:null)+'</td>';
+    case 'f':      return '<td>'+nf(m.f,0)+'</td>';
+    case 'rate':   return '<td>'+D(rateChip(m.rate,1))+'</td>';
+    case 'tagR':   return '<td class="tagc">'+tagChip(tagR(m.rate))+'</td>';
+    case 'rateL1': return '<td>'+rateChip(m.rateL1,1)+'</td>';
+    case 'wrateL1':return '<td>'+rateChip(m.wrateL1,1)+'</td>';
+    case 'wrate4': return '<td>'+rateChip(m.wrate4,1)+'</td>';
+    case 'gap':    return '<td style="color:'+gapColor(m.gapW)+'">'+nf(m.gapW,1)+'</td>';
+    case 'pr':     return '<td>'+D(prChip(m.pr))+'</td>';
+    case 'tagP':   return '<td class="tagc">'+tagChip(tagP(m.pr))+'</td>';
+    case 'adp':    return '<td>'+D(pct(m.adp))+'</td>';
+    case 'whp':    return '<td>'+pct(m.whp)+'</td>';
+    case 'acos':   return '<td>'+pct(m.acos)+'</td>';
+    case 'invp':   return '<td>'+pct(ctx.totInv?m.inv/ctx.totInv:null)+'</td>';
+    case 'invP':   return '<td>'+nf(m.invP)+'</td>';
+    case 'invS':   return '<td>'+nf(m.invS)+'</td>';
+    case 'days':   return '<td>'+D(dayChip(m.days))+'</td>';
+    case 'tagD':   return '<td class="tagc">'+tagChip(tagD(m.days,m.invP))+'</td>';
+    default:       return '<td>—</td>';
+  }
+}
+
+/* 导出用：同一口径的纯文本值 */
+function scnTxt(k,m,ctx){
+  const pc=v=>(v==null||!isFinite(v))?'':(v*100).toFixed(2)+'%';
+  switch(k){
+    case 'n':      return m.n;
+    case 'np':     return ctx.totN?pc(m.n/ctx.totN):'';
+    case 'q':      return m.q;
+    case 'qp':     return ctx.totQ?pc(m.q/ctx.totQ):'';
+    case 'f':      return (m.f||0).toFixed(2);
+    case 'rate':   return pc(m.rate);
+    case 'tagR':   return tagR(m.rate).t;
+    case 'rateL1': return pc(m.rateL1);
+    case 'wrateL1':return pc(m.wrateL1);
+    case 'wrate4': return pc(m.wrate4);
+    case 'gap':    return m.gapW==null?'':m.gapW.toFixed(2);
+    case 'pr':     return pc(m.pr);
+    case 'tagP':   return tagP(m.pr).t;
+    case 'adp':    return pc(m.adp);
+    case 'whp':    return pc(m.whp);
+    case 'acos':   return pc(m.acos);
+    case 'invp':   return ctx.totInv?pc(m.inv/ctx.totInv):'';
+    case 'invP':   return m.invP;
+    case 'invS':   return m.invS;
+    case 'days':   return m.days==null?'':m.days.toFixed(1);
+    case 'tagD':   return tagD(m.days,m.invP).t;
+  }
+  return '';
+}
+
 function renderScene(){
   const rows=baseRows();
   $('#s2scope').textContent=`${nf(rows.length)} 个 SKU`;
-  const gs=groupBy(rows,'sc').sort((a,b)=>SC_ORDER.indexOf(a.k)-SC_ORDER.indexOf(b.k));
-  const totQ=gs.reduce((s,g)=>s+g.m.q,0), totN=rows.length, totInv=gs.reduce((s,g)=>s+g.m.inv,0);
+  const dim=SCN.dim;
+  const dimName=(SCN_DIMS.filter(x=>x[0]===dim)[0]||['',''])[1];
 
-  let h=`<div class="tbl-wrap"><table class="dt"><thead><tr>
-    <th class="l">场景（最新）</th><th>SKU数</th><th>SKU占比</th><th>4周订单</th><th>订单占比</th>
-    <th>4周预测</th><th>达成率</th><th class="tagc">预测打标</th><th>周均缺口</th><th>利润率</th><th class="tagc">利润率打标</th><th>广告占比</th><th>仓储占比</th><th>Acos</th>
-    <th>总库存占比</th><th>平台仓库存</th><th>自发仓库存</th><th>平台仓可售天数</th><th class="tagc">可售天数打标</th></tr></thead><tbody>`;
-  if(!gs.length){
+  const base=groupBy(rows,'sc').sort((a,b)=>SC_ORDER.indexOf(a.k)-SC_ORDER.indexOf(b.k));
+  const totQ=base.reduce((s,g)=>s+g.m.q,0), totN=rows.length, totInv=base.reduce((s,g)=>s+g.m.inv,0);
+  const ctx={totQ:totQ,totN:totN,totInv:totInv};
+  const all=M(agg(rows));
+
+  /* 子组：场景 + 维度值 */
+  const kids=new Map();
+  if(dim){
+    groupBy(rows,function(r){ return r.sc+'\u0001'+(r[dim]||'未分类'); }).forEach(function(g){
+      const p=g.k.split('\u0001'), sc=p[0], val=p.slice(1).join('\u0001');
+      if(!kids.has(sc)) kids.set(sc,[]);
+      kids.get(sc).push({sc:sc,val:val,g:g});
+    });
+    kids.forEach(function(arr){ arr.sort(function(a,b){ return b.g.m.q-a.g.m.q; }); });
+  }
+
+  /* 每个单元格的弹窗条件：拆维度后精确到「场景 + 维度值」 */
+  function drillFor(scene,val){
+    return function(inner){
+      const pred = dim
+        ? function(r){ return r.sc===scene && String(r[dim]||'未分类')===val; }
+        : function(r){ return r.sc===scene; };
+      const label = dim ? ('场景 '+scene+' · '+dimName+' '+val) : ('场景：'+scene);
+      return drillNum(rows,label,pred,inner);
+    };
+  }
+
+  /* 顶部控件 */
+  const ctl=$('#scnCtl');
+  if(ctl){
+    ctl.innerHTML='<span class="cl">拆分维度</span>'+
+      '<select id="scnDim">'+SCN_DIMS.map(function(d){
+        return '<option value="'+d[0]+'"'+(SCN.dim===d[0]?' selected':'')+'>'+d[1]+'</option>';
+      }).join('')+'</select>'+
+      (dim?'<span class="cl">展示</span><select id="scnMode">'+
+        '<option value="nest"'+(SCN.mode==='nest'?' selected':'')+'>嵌套（场景下展开）</option>'+
+        '<option value="flat"'+(SCN.mode==='flat'?' selected':'')+'>扁平（组合行 + 小计）</option></select>'+
+        '<span class="scnbtn" id="scnExpAll">'+(SCN.mode==='nest'?(Object.keys(SCN.exp).length?'全部收起':'全部展开'):'')+'</span>':'')+
+      '<span class="scnbtn" id="scnExp">导出 CSV</span>';
+  }
+
+  if(!base.length){
     $('#sceneTable').innerHTML='<div class="empty">当前筛选范围内无数据</div>';
     $('#sceneNote').innerHTML='';
     return;
   }
-  gs.forEach(g=>{
-    const m=g.m;
-    const scP=r=>r.sc===g.k;
-    h+=`<tr data-scene="${g.k}">
-      <td class="l nm"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${scColor(g.k)};margin-right:7px"></span>${g.k}</td>
-      <td>${drillNum(rows,'场景：'+g.k,scP,nf(m.n))}</td><td>${pct(totN?m.n/totN:null)}</td>
-      <td>${drillNum(rows,'场景：'+g.k,scP,'<b>'+nf(m.q)+'</b>')}</td><td>${pct(totQ?m.q/totQ:null)}</td>
-      <td>${nf(m.f,0)}</td><td>${drillNum(rows,'场景：'+g.k,scP,rateChip(m.rate,1))}</td><td class="tagc">${tagChip(tagR(m.rate))}</td>
-      <td style="color:${gapColor(m.gapW)}">${nf(m.gapW,1)}</td>
-      <td>${drillNum(rows,'场景：'+g.k,scP,prChip(m.pr))}</td><td class="tagc">${tagChip(tagP(m.pr))}</td><td>${drillNum(rows,'场景：'+g.k,scP,pct(m.adp))}</td><td>${pct(m.whp)}</td><td>${pct(m.acos)}</td>
-      <td>${pct(totInv?m.inv/totInv:null)}</td><td>${nf(m.invP)}</td><td>${nf(m.invS)}</td><td>${drillNum(rows,'场景：'+g.k,scP,dayChip(m.days))}</td><td class="tagc">${tagChip(tagD(m.days,m.invP))}</td></tr>`;
-  });
-  const all=M(agg(rows));
-  h+=`</tbody><tfoot><tr><td class="l">汇总</td><td>${nf(all.n)}</td><td>100%</td>
-    <td>${nf(all.q)}</td><td>100%</td><td>${nf(all.f,0)}</td><td>${rateChip(all.rate,1)}</td><td class="tagc">${tagChip(tagR(all.rate))}</td>
-    <td style="color:${gapColor(all.gapW)}">${nf(all.gapW,1)}</td><td>${pct(all.pr)}</td><td class="tagc">${tagChip(tagP(all.pr))}</td><td>${pct(all.adp)}</td><td>${pct(all.whp)}</td><td>${pct(all.acos)}</td>
-    <td>100%</td><td>${nf(all.invP)}</td><td>${nf(all.invS)}</td><td>${dayChip(all.days)}</td><td class="tagc">${tagChip(tagD(all.days,all.invP))}</td></tr></tfoot></table></div>`;
-  $('#sceneTable').innerHTML=h;
-  $('#sceneTable').querySelectorAll('tbody tr').forEach(tr=>{
-    tr.onclick=(e)=>{
-      /* 点在可下钻数字上时不要触发行的场景筛选（否则定位范围被二次收窄） */
-      if(e.target.closest('[data-af]')) return;
-      F.scene=(F.scene===tr.dataset.scene)?'全部':tr.dataset.scene;renderAll();
+
+  let head='<th class="l">场景（最新）</th>'+(dim?'<th class="l">'+dimName+'</th>':'')+
+    SCN_COLS.map(function(c){ return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
+
+  let body='';
+  const colCnt=1+(dim?1:0)+SCN_COLS.length;
+  const allD=(inner)=>drillNum(rows,'全部场景',function(){return true;},inner);
+
+  function sceneRow(g){
+    const m=g.m, D=drillFor(g.k,'');
+    const cnt=(kids.get(g.k)||[]).length;
+    const open=!!SCN.exp[g.k];
+    const caret = dim ? '<span class="scncar" data-exp="'+g.k+'">'+(open?'▾':'▸')+'</span>' : '';
+    let t='<tr class="scnrow" data-scene="'+g.k+'">'+
+      '<td class="l nm">'+caret+'<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+scColor(g.k)+';margin-right:7px"></span>'+g.k+
+      (dim?'<span class="scnn">'+cnt+' 个'+dimName+'</span>':'')+'</td>'+
+      (dim?'<td class="l" style="color:var(--muted)">小计</td>':'');
+    SCN_COLS.forEach(function(c){ t+=scnCell(c,m,ctx,D); });
+    return t+'</tr>';
+  }
+
+  function kidRow(scene,val,g){
+    const D=drillFor(scene,val);
+    let t='<tr class="scnkid" data-scene="'+scene+'" data-val="'+String(val).replace(/"/g,'&quot;')+'">'+
+      (dim?'<td class="l" style="color:var(--muted)"></td><td class="l">'+val+'</td>':'');
+    if(!dim) t='<tr class="scnkid" data-scene="'+scene+'">'+'<td class="l"></td>';
+    SCN_COLS.forEach(function(c){ t+=scnCell(c,g.m,ctx,D); });
+    return t+'</tr>';
+  }
+
+  /* 扁平模式：小计行 + 子行，按场景顺序排列；SKU 维度分页 */
+  function flatRows(){
+    let out=[], idx=0;
+    base.forEach(function(g){
+      const arr=kids.get(g.k)||[];
+      out.push({type:'sum',sc:g.k,g:g});
+      arr.forEach(function(k){ out.push({type:'kid',sc:g.k,val:k.val,g:k.g}); });
+    });
+    return out;
+  }
+
+  if(!dim){
+    base.forEach(function(g){ body+=sceneRow(g); });
+  }else if(SCN.mode==='nest'){
+    base.forEach(function(g){
+      body+=sceneRow(g);
+      if(SCN.exp[g.k]){
+        (kids.get(g.k)||[]).forEach(function(k){ body+=kidRow(g.k,k.val,k.g); });
+      }
+    });
+  }else{
+    const list=flatRows();
+    const pages=Math.ceil(list.length/SCN.size)||1;
+    if(SCN.page>pages) SCN.page=pages;
+    const view=list.slice((SCN.page-1)*SCN.size, SCN.page*SCN.size);
+    view.forEach(function(x){
+      body += x.type==='sum' ? sceneRow(x.g) : kidRow(x.sc,x.val,x.g);
+    });
+    if(pages>1){
+      body+='<tr><td colspan="'+colCnt+'" style="padding:8px;text-align:center;background:#fff">'+
+        '<button class="scnpg" data-pg="prev"'+(SCN.page<=1?' disabled':'')+'>上一页</button>'+
+        '<span style="margin:0 10px;font-size:12px;color:var(--muted)">'+SCN.page+' / '+pages+'（共 '+nf(list.length)+' 行）</span>'+
+        '<button class="scnpg" data-pg="next"'+(SCN.page>=pages?' disabled':'')+'>下一页</button></td></tr>';
+    }
+  }
+
+  let foot='<tr><td class="l">汇总</td>'+(dim?'<td></td>':'')+
+    '<td>'+nf(all.n)+'</td><td>100%</td><td>'+nf(all.q)+'</td><td>100%</td>'+
+    '<td>'+nf(all.f,0)+'</td><td>'+rateChip(all.rate,1)+'</td><td class="tagc">'+tagChip(tagR(all.rate))+'</td>'+
+    '<td>'+rateChip(all.rateL1,1)+'</td><td>'+rateChip(all.wrateL1,1)+'</td><td>'+rateChip(all.wrate4,1)+'</td>'+
+    '<td style="color:'+gapColor(all.gapW)+'">'+nf(all.gapW,1)+'</td><td>'+pct(all.pr)+'</td><td class="tagc">'+tagChip(tagP(all.pr))+'</td>'+
+    '<td>'+pct(all.adp)+'</td><td>'+pct(all.whp)+'</td><td>'+pct(all.acos)+'</td>'+
+    '<td>100%</td><td>'+nf(all.invP)+'</td><td>'+nf(all.invS)+'</td><td>'+dayChip(all.days)+'</td>'+
+    '<td class="tagc">'+tagChip(tagD(all.days,all.invP))+'</td></tr>';
+
+  $('#sceneTable').innerHTML='<div class="tbl-wrap"><table class="dt"><thead><tr>'+head+
+    '</tr></thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
+
+  /* 事件 */
+  const host=$('#sceneTable');
+  host.querySelectorAll('[data-exp]').forEach(function(sp){
+    sp.onclick=function(e){
+      e.stopPropagation();
+      const k=sp.dataset.exp;
+      if(SCN.exp[k]) delete SCN.exp[k]; else SCN.exp[k]=1;
+      renderScene();
     };
   });
+  host.querySelectorAll('tr.scnrow').forEach(function(tr){
+    tr.onclick=function(e){
+      if(e.target.closest('[data-af]')) return;
+      if(e.target.closest('[data-exp]')) return;
+      F.scene=(F.scene===tr.dataset.scene)?'全部':tr.dataset.scene;
+      renderAll();
+    };
+  });
+  host.querySelectorAll('tr.scnkid').forEach(function(tr){
+    tr.onclick=function(e){
+      if(e.target.closest('[data-af]')) return;
+      const scene=tr.dataset.scene, val=tr.dataset.val;
+      const pred = (val==null) ? function(r){ return r.sc===scene; }
+        : function(r){ return r.sc===scene && String(r[dim]||'未分类')===val; };
+      openSkuList(dim ? ('场景 '+scene+' · '+dimName+' '+val) : ('场景：'+scene), rows.filter(pred));
+    };
+  });
+  host.querySelectorAll('.scnpg').forEach(function(b){
+    b.onclick=function(){ SCN.page += (b.dataset.pg==='next'?1:-1); renderScene(); };
+  });
+  const sd=$('#scnDim');
+  if(sd) sd.onchange=function(){ SCN.dim=sd.value; SCN.page=1; SCN.exp={}; renderScene(); };
+  const sm=$('#scnMode');
+  if(sm) sm.onchange=function(){ SCN.mode=sm.value; SCN.page=1; renderScene(); };
+  const ex=$('#scnExp');
+  if(ex) ex.onclick=function(){
+    const head=['场景'].concat(dim?[dimName]:[]).concat(SCN_COLS.map(function(c){ return c.t; }));
+    const lines=[head.map(csvCell).join(',')];
+    function pushRow(a,b,m){
+      const row=[a]; if(dim) row.push(b);
+      SCN_COLS.forEach(function(c){ row.push(scnTxt(c.k,m,ctx)); });
+      lines.push(row.map(csvCell).join(','));
+    }
+    base.forEach(function(g){
+      pushRow(g.k,'小计',g.m);
+      if(dim) (kids.get(g.k)||[]).forEach(function(k){ pushRow(g.k,k.val,k.g.m); });
+    });
+    pushRow('汇总','',all);
+    downloadCsv(lines,'场景策略分布'+(dim?'-'+dimName:'')+'_'+DB.version+'.csv');
+  };
+  const ea=$('#scnExpAll');
+  if(ea) ea.onclick=function(){
+    const on=Object.keys(SCN.exp).length;
+    if(on) SCN.exp={}; else base.forEach(function(g){ SCN.exp[g.k]=1; });
+    renderScene();
+  };
 
-  $('#sceneNote').innerHTML='场景口径取自明细表「场景类型-最新」；判定条件见源表「输出逻辑」页：淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率&lt;95% 且可售&gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。<b>点击场景行的数字可定位到该场景的 SKU 明细</b>，点击行空白处可联动筛选全表。';
+  $('#sceneNote').innerHTML='场景口径取自明细表「场景类型-最新」；判定条件见源表「输出逻辑」页：淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率&lt;95% 且可售&gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。'+
+    (dim?'<b>当前按 '+dimName+' 拆分</b>：场景行是该场景小计，子行是「场景 × '+dimName+'」的组合，两者指标口径相同（都是 Σ分子 ÷ Σ分母）。点场景行切换全局场景筛选，点子行弹窗看这批 SKU。'
+    :'<b>点击场景行的数字可弹窗看该场景的 SKU</b>，点击行空白处可联动筛选全表。顶部「拆分维度」可继续按 BU / 负责人 / Listing / SKU 展开。');
 }
+
 
 /* ---------- 02 核心异常 ---------- */
 const TH={over:1.10, low:0.90, prGood:0.13, prMid:0.08, dOOS:30, dPile:70, matQ:10, bigQ:28};
