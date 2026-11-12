@@ -1373,7 +1373,7 @@ function agg(rows){
     inv:0,invP:0,invS:0,d7:0,elim:0,con:0,act:0,noFc:0,noFcQ:0,deadInv:0,over:0,hit:0,under:0,oos:0,pile:0,
     qw:[0,0,0,0],fw:[0,0,0,0],prN2:[0,0,0,0],prD2:[0,0,0,0],adN2:[0,0,0,0],adD2:[0,0,0,0],
     lg1:0,lf1:0,lk1:0,g4:0,f4w:0,k4:0,
-    mth:[0,0,0,0,0,0,0,0,0],sc:{},promo:{},adv:{},mv:{},invt:{},set:{}};
+    mth:[0,0,0,0,0,0,0,0,0],sc:{},promo:{},adv:{},mv:{},invt:{},set:{},c3c:{},ownc:{}};
   for(const r of rows){
     o.q+=r.q4; o.f+=r.f4; o.wq+=r.wq4; o.inv+=r.inv; o.d7+=r.d7;
     o.gp+=r.gp; o.revI+=r.revI; o.mk+=r.mk; o.wsp+=r.wsp; o.sp+=r.sp; o.ads+=r.ads;
@@ -1405,6 +1405,8 @@ function agg(rows){
     o.mv[r.mv]=(o.mv[r.mv]||0)+1;
     o.invt[r.invt]=(o.invt[r.invt]||0)+1;
     o.set[r.set]=(o.set[r.set]||0)+1;
+    o.c3c[r.c3]=(o.c3c[r.c3]||0)+1;
+    o.ownc[r.own]=(o.ownc[r.own]||0)+1;
   }
   return o;
 }
@@ -1433,6 +1435,7 @@ function M(o){
     oos:o.oos, pile:o.pile, elim:o.elim, con:o.con, act:o.act, noFc:o.noFc,
     over:o.over, hit:o.hit, under:o.under,
     qw:o.qw, fw:o.fw, mth:o.mth, sc:o.sc, promo:o.promo, adv:o.adv, mv:o.mv, invt:o.invt, set:o.set,
+    c3c:o.c3c, ownc:o.ownc,
     prW:o.prD2.map((d,i)=> d>0? o.prN2[i]/d : null),
     adW:o.adD2.map((d,i)=> d>0? o.adN2[i]/d : null),
     raw:o
@@ -2854,10 +2857,27 @@ const DIM_ALLCOLS=(function(){
   a.push({k:'sc', t:'场景构成', type:'cmp'});
   return a;
 })();
+/* 某些层要额外带出别的维度值（v52）：国家Listing 层加「三级分类 / 销售负责人」 */
+const DIM_EXTRA={
+  3:[{k:'c3x', t:'三级分类',   type:'txt', src:'c3'},
+     {k:'ownx',t:'销售负责人', type:'txt', src:'own'}]
+};
+function dimColsOf(i){
+  const ex=DIM_EXTRA[i]||[];
+  if(!ex.length) return DIM_ALLCOLS;
+  return [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2));
+}
+/* 组内某个维度取值：按出现次数排序，多于一个时显示「主值 等N项」 */
+function dimTopTxt(m,key){
+  const o=m[key]||{}, ks=Object.keys(o);
+  if(!ks.length) return {txt:'—', all:'', n:0};
+  ks.sort(function(a,b){ return (o[b]-o[a]) || String(a).localeCompare(String(b)); });
+  return {txt: ks.length>1 ? ks[0]+' 等'+ks.length+'项' : ks[0], all:ks.join(' · '), n:ks.length};
+}
 const DIMCOL_TYPE={}; DIMCOLS.forEach(function(c){ DIMCOL_TYPE[c.k]=c.type; });
 /* ---- 维度层筛选（v42）：所有列都可筛 ---- */
 /* 非 DIMCOLS 的列：组名（文本）、三类组级打标、场景构成（文本） */
-const DIMF_TYPE={__g:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt'};
+const DIMF_TYPE={__g:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt', c3x:'txt', ownx:'txt'};
 DIMCOLS.forEach(function(c){ DIMF_TYPE[c.k]=c.type; });
 /* 数值列的下拉候选（点输入框右侧箭头可展开，也可直接手输任意表达式） */
 const DIMF_HINT={
@@ -2876,6 +2896,8 @@ function dimFVal(g,k,totQ){
   if(k==='tagP') return tagP(g.m.pr).k;
   if(k==='tagD') return tagD(g.m.days, g.m.invP).k;
   if(k==='sc')   return g.m.sc?Object.keys(g.m.sc).join(' '):'';
+  if(k==='c3x')  return g.m.c3c?Object.keys(g.m.c3c).join(' '):'';
+  if(k==='ownx') return g.m.ownc?Object.keys(g.m.ownc).join(' '):'';
   return dimVal(k, g.m, totQ);
 }
 /* 单个组的单条件判断：文本/打标 → 包含/精确；数值 → >N / <N / a~b / 等于 */
@@ -3039,30 +3061,42 @@ function renderDims(){
       </span>`));
     if(!rows.length){ wrap.insertAdjacentHTML('beforeend','<div class="empty">当前筛选范围内无数据</div>'); host.appendChild(wrap); return; }
 
+    const cols=dimColsOf(i);
+    const exCols=DIM_EXTRA[i]||[];
+    const exVals={c3x:Object.keys(all.c3c||{}), ownx:Object.keys(all.ownc||{})};
+    const exCell=function(m){
+      return exCols.map(function(c){
+        const t=dimTopTxt(m, c.k==='c3x'?'c3c':'ownc');
+        return '<td class="l" title="'+t.all.replace(/"/g,'&quot;')+'">'+t.txt+'</td>';
+      }).join('');
+    };
+    const exBlank=exCols.map(function(){ return '<td class="l"></td>'; }).join('');
     let h='<div class="tbl-wrap"><table class="dt"><thead><tr>'+
-      DIM_ALLCOLS.map(function(c){
+      cols.map(function(c){
         if(c.k==='_rk')    return '<th style="width:30px">#</th>';
         if(c.k==='_name')  return '<th class="l">'+d.name+'</th>';
+        if(c.type==='txt') return '<th class="l">'+c.t+'</th>';
         if(c.type==='tag') return '<th class="l" style="width:'+(c.w||72)+'px">'+c.t+'</th>';
         if(c.k==='sc')     return '<th class="l" style="width:112px">'+c.t+'</th>';
         return '<th class="sortable'+sk(c.k)+'" data-i="'+i+'" data-k="'+c.k+'">'+c.t+ar(c.k)+'</th>';
       }).join('')+'</tr>'+
       (fOn ? '<tr class="filrow">'+
-        DIM_ALLCOLS.map(function(c){
+        cols.map(function(c){
           if(c.k==='_rk')    return '<td class="fc">'+(fKeys.length?'<span class="fclear" data-fclear="'+i+'" title="清除本层所有筛选条件">✕</span>':'')+'</td>';
           if(c.k==='_name')  return '<td class="l">'+dimFilInput(i,'__g',st,'组名',gNames)+'</td>';
+          if(c.type==='txt') return '<td>'+dimFilInput(i,c.k,st,c.t.slice(0,2),(exVals[c.k]||[]))+'</td>';
           if(c.type==='tag') return '<td>'+dimTagSel(i,c.k,st)+'</td>';
           if(c.k==='sc')     return '<td>'+dimFilInput(i,'sc',st,'场景名',scNames)+'</td>';
           var hint=(DIMF_HINT[c.k]||[])[0]||(c.type==='pct'?'8~13':(c.type==='int'?'>100':'30~70'));
           return '<td>'+dimFilInput(i,c.k,st,hint,DIMF_HINT[c.k]||[])+'</td>';
         }).join('')+'</tr>' : '')+
       '</thead><tbody>';
-    /* 表头列数必须与 DIM_ALLCOLS 一致，否则列错位（改列时第一时间暴露） */
-    if(DIM_ALLCOLS.length!==22) console.warn('DIM_ALLCOLS 列数变了：', DIM_ALLCOLS.length);
+    /* 表头列数必须与列定义一致，否则列错位（改列时第一时间暴露） */
+    if(cols.length!==22+exCols.length) console.warn('维度列数变了：', cols.length);
     shown.forEach((g,idx)=>{
       const m=g.m;
       h+=`<tr data-i="${i}" data-v="${String(g.k).replace(/"/g,'&quot;').replace(/</g,'&lt;')}">
-        <td class="rk">${idx+1}</td><td class="l nm" title="${String(g.k).replace(/"/g,'&quot;')}">${g.k}</td>
+        <td class="rk">${idx+1}</td><td class="l nm" title="${String(g.k).replace(/"/g,'&quot;')}">${g.k}</td>${exCell(m)}
         <td>${nf(m.n)}</td><td><b>${nf(m.q)}</b></td><td>${pct(all.q?m.q/all.q:null)}</td>
         <td>${nf(m.f,0)}</td><td>${rateChip(m.rate,1)}</td><td class="l">${tagChip(tagR(m.rate))}</td>
         <td>${rateChip(m.rateL1,1)}</td><td>${rateChip(m.wrateL1,1)}</td><td>${rateChip(m.wrate4,1)}</td>
@@ -3075,7 +3109,7 @@ function renderDims(){
     dimRows[i]=sumRows;   /* 本层导出跟随筛选结果 */
     dimGroups[i]=groups;  /* 本层汇总导出：顺序与筛选都跟随当前视图 */
     const sm=M(agg(sumRows));
-    h+=`</tbody><tfoot><tr><td class="l"></td><td class="l">合计 / 加权${fKeys.length?'（已筛选）':''}</td><td>${nf(sm.n)}</td>
+    h+=`</tbody><tfoot><tr><td class="l"></td><td class="l">合计 / 加权${fKeys.length?'（已筛选）':''}</td>${exBlank}<td>${nf(sm.n)}</td>
       <td>${nf(sm.q)}</td><td>${all.q?pct(sm.q/all.q):'—'}</td><td>${nf(sm.f,0)}</td><td>${rateChip(sm.rate,1)}</td><td class="l">${tagChip(tagR(sm.rate))}</td>
       <td>${rateChip(sm.rateL1,1)}</td><td>${rateChip(sm.wrateL1,1)}</td><td>${rateChip(sm.wrate4,1)}</td>
       <td style="color:${gapColor(sm.gapW)}">${nf(sm.gapW,1)}</td><td>${pct(sm.pr)}</td><td class="l">${tagChip(tagP(sm.pr))}</td><td>${pct(sm.adp)}</td><td>${pct(sm.whp)}</td><td>${pct(sm.acos)}</td>
@@ -3423,6 +3457,8 @@ function dimTxtVal(c,g,rank,totQ,totN){
     case 'days':   return (m.days==null||!isFinite(m.days))?'':Math.round(m.days<0?0:m.days);
     case 'tagD':   return tagD(m.days,m.invP).t;
     case 'invS':   return m.invS;
+    case 'c3x':    return Object.keys(m.c3c||{}).sort(function(a,b){ return (m.c3c[b]-m.c3c[a])||String(a).localeCompare(String(b)); }).join(' / ');
+    case 'ownx':   return Object.keys(m.ownc||{}).sort(function(a,b){ return (m.ownc[b]-m.ownc[a])||String(a).localeCompare(String(b)); }).join(' / ');
     case 'sc':     return SC_ORDER.filter(function(s){ return (m.sc||{})[s]; })
                      .map(function(s){ return s+' '+((m.sc[s]/(m.n||1))*100).toFixed(1)+'%'; }).join(' · ');
   }
@@ -3432,14 +3468,15 @@ function exportDimSum(rows, d, i, grp){
   const all=M(agg(rows));
   const totQ=all.q||1, totN=rows.length||1;
   const groups=(grp&&grp.length)?grp:groupBy(rows,d.f);
-  const lines=[DIM_ALLCOLS.map(function(c){ return csvCell(c.k==='_name'?d.name:c.t); }).join(',')];
+  const cols=dimColsOf(i||0);
+  const lines=[cols.map(function(c){ return csvCell(c.k==='_name'?d.name:c.t); }).join(',')];
   groups.forEach(function(g,idx){
-    lines.push(DIM_ALLCOLS.map(function(c){ return csvCell(dimTxtVal(c,g,idx+1,totQ,totN)); }).join(','));
+    lines.push(cols.map(function(c){ return csvCell(dimTxtVal(c,g,idx+1,totQ,totN)); }).join(','));
   });
-  lines.push(DIM_ALLCOLS.map(function(c){
+  lines.push(cols.map(function(c){
     if(c.k==='_rk')   return csvCell('');
     if(c.k==='_name') return csvCell('合计 / 加权');
-    if(c.k==='sc')    return csvCell('');
+    if(c.k==='sc'||c.k==='c3x'||c.k==='ownx') return csvCell('');
     return csvCell(dimTxtVal(c,{k:'合计',m:all},groups.length+1,totQ,totN));
   }).join(','));
   downloadCsv(lines, '巴西运营监控看板_'+d.name+'汇总_'+new Date().toISOString().slice(0,10)+'.csv');
