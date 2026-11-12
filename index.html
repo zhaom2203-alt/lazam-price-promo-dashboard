@@ -965,6 +965,33 @@ table.skmt tr.skf input::placeholder{color:#bcc7d8}
 table.skmt th.srt.on .sk-ar{color:#1f4bc4;font-size:9px;margin-left:4px}
 table.skmt th.srt .sk-ar{opacity:.9}
 
+/* ---------- 02 打标规则表 ---------- */
+.tagsum{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1420px){.tagsum{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.tagsum{grid-template-columns:1fr}}
+.tagrule{margin:6px 16px 12px;border:1px solid var(--line2);border-radius:12px;background:#fbfcfe;overflow:hidden}
+.trbar{display:flex;align-items:center;gap:12px;padding:9px 14px;flex-wrap:wrap}
+.tagrule .trt{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.2px}
+.tagrule .trs{font-size:11.5px;color:var(--muted)}
+.tagrule .trbtn{margin-left:auto;border:1px solid #d6e0f4;background:#fff;border-radius:8px;
+  padding:4px 12px;font-family:inherit;font-size:11.5px;color:#2f5bd7;cursor:pointer;font-weight:600;
+  transition:.15s;white-space:nowrap}
+.tagrule .trbtn:hover{background:#eef4ff;border-color:#b9cdf0}
+.tagrule .trbody{display:none}
+.tagrule.open .trbody{display:block;padding:0 12px 10px;border-top:1px solid var(--line2)}
+table.tagrt{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:10px}
+table.tagrt th{background:#eef4fd;color:#3d4d68;font-weight:600;font-size:11px;padding:7px 8px;
+  border:1px solid #e3ebf8;text-align:center;white-space:nowrap}
+table.tagrt td{padding:6px 8px;border:1px solid #eef2f9;text-align:center;color:var(--ink2);white-space:nowrap}
+table.tagrt td.cond{color:#7d8aa2;font-variant-numeric:tabular-nums}
+table.tagrt tbody tr:nth-child(even) td{background:#f8fbff}
+table.tagrt tr.trna td{background:#fafbfd;color:#9aa7bd}
+table.tagrt tr.trna td.cond{color:#aab6c9}
+table.tagrt .tg{min-width:0;padding:1px 8px;font-size:11px}
+table.tagrt .tg em{font-style:normal;font-size:10px;color:#8492a8;margin-left:3px}
+.tagrule .trnote{font-size:11px;color:var(--muted);line-height:1.7;padding:9px 2px 2px}
+.tagrule .trnote code{background:#eef2f9;border-radius:4px;padding:1px 5px;font-size:10.5px;color:#4a5b78}
+
 </style>
 </head>
 <body>
@@ -1046,6 +1073,57 @@ table.skmt th.srt .sk-ar{opacity:.9}
             <button data-d="lst">国家Listing</button>
           </div>
           <div class="tdbody" id="anoDistBody"></div>
+        </div>
+
+        <div class="tagrule" id="anoRule">
+          <div class="trbar">
+            <span class="trt">打标规则</span>
+            <span class="trs">四类打标的分档条件 · 同一套规则用于 02 速览 / 04 维度表 / SKU 明细与弹窗</span>
+            <button class="trbtn" id="anoRuleBtn">展开规则表 ▾</button>
+          </div>
+          <div class="trbody">
+            <table class="tagrt">
+              <thead><tr>
+                <th>最新预测达成</th><th>预测打标</th>
+                <th>利润率</th><th>利润率打标</th>
+                <th>平台仓可售天数</th><th>可售天数打标</th>
+                <th>平台仓库存量</th><th>库存量打标</th>
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td class="cond">≥ 110%</td><td><span class="tg over">超达</span></td>
+                  <td class="cond">≤ 0%</td><td><span class="tg neg">负毛利</span></td>
+                  <td class="cond">&lt; 0 天</td><td><span class="tg oos">断货</span></td>
+                  <td class="cond">≤ 0</td><td><span class="tg oos">无库存</span></td>
+                </tr>
+                <tr>
+                  <td class="cond">90% – 110%</td><td><span class="tg ok">达成</span></td>
+                  <td class="cond">0% – 8%</td><td><span class="tg warn">低毛利</span></td>
+                  <td class="cond">≤ 30 天</td><td><span class="tg warn">缺货</span></td>
+                  <td class="cond">≤ 50</td><td><span class="tg warn">低库存量</span></td>
+                </tr>
+                <tr>
+                  <td class="cond">80% – 90%</td><td><span class="tg low">达成偏低</span></td>
+                  <td class="cond">8% – 13%</td><td><span class="tg ok">正常毛利</span></td>
+                  <td class="cond">30 – 70 天</td><td><span class="tg ok">正常</span></td>
+                  <td class="cond">50 – 100</td><td><span class="tg ok">库存量正常</span></td>
+                </tr>
+                <tr>
+                  <td class="cond">&lt; 80%</td><td><span class="tg bad">严重低达</span></td>
+                  <td class="cond">&gt; 13%</td><td><span class="tg high">高毛利</span></td>
+                  <td class="cond">≥ 70 天</td><td><span class="tg pile">压货</span></td>
+                  <td class="cond">&gt; 300</td><td><span class="tg pile">库存重点</span></td>
+                </tr>
+                <tr class="trna">
+                  <td class="cond">无预测</td><td><span class="tg na">无预测</span></td>
+                  <td class="cond">无数据</td><td><span class="tg na">无数据</span></td>
+                  <td class="cond">7DMS＝0 且库存 &gt;0</td><td><span class="tg na">无动销</span></td>
+                  <td class="cond">100 – 300</td><td><span class="tg ok">库存量正常<em>（源规则未覆盖）</em></span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="trnote">阈值定义在 <code>tagR / tagP / tagD / tagS</code> 四个函数里，改一处四处同步（02 速览 · 02 分布 · 04 维度表 · SKU 明细与弹窗）。「达成率」按 4周累计最新版计算；「库存量」按平台仓可销售展示库存。</div>
+          </div>
         </div>
 
         <div class="subhead noline"><span>异常总览 <b>严重度 P0 立办 / P1 本周 / P2 观察</b></span></div>
@@ -1172,6 +1250,16 @@ const tagD = (d,invP)=>{
   return            {k:'pile', t:'压货', c:'pile'};
 };
 const tagChip = t=>'<span class="tg '+t.c+'">'+t.t+'</span>';
+/* 库存量打标：按平台仓库存量分档。≤0 无库存 / ≤50 低库存量 / 50–100 正常 / >300 库存重点
+   注：源规则未覆盖 100–300，暂归入「库存量正常」，待业务确认 */
+const tagS = invP=>{
+  const v = (invP==null||!isFinite(invP))?0:invP;
+  if(v<=0)  return {k:'zero', t:'无库存',   c:'oos'};
+  if(v<=50) return {k:'low',  t:'低库存量', c:'warn'};
+  if(v<100) return {k:'ok',   t:'库存量正常', c:'ok'};
+  if(v<=300)return {k:'ok',   t:'库存量正常', c:'ok'};
+  return           {k:'heavy',t:'库存重点', c:'pile'};
+};
 
 const SC_ORDER = ['淘汰','压货预警','压货提销','冲坑','利润改善','其他'];
 const SC_COLOR = {'淘汰':'#9aa4b8','压货预警':'#e0603a','压货提销':'#e5a13a','冲坑':'#7a5cd6','利润改善':'#2f8fd7','其他':'#c9d2e0'};
@@ -1467,7 +1555,8 @@ const TIP_SKU={
   days:'平台仓可售天数＝Σ平台仓库存 ÷ Σ平台仓 7DMS。>70 天压货，<30 天紧张；库存 ≤0 直接判断货',
   tagR:'预测打标：≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / <80% 严重低达 / 无预测。按 SKU 的达成率分档',
   tagP:'利润率打标：≤0% 负毛利 / <8% 低毛利 / 8–13% 正常毛利 / >13% 高毛利 / 无数据。按 SKU 的业务毛利率分档',
-  tagD:'可售天数打标：断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 无动销。按平台仓可售天数分档'
+  tagD:'可售天数打标：断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 无动销。按平台仓可售天数分档',
+  tagS:'库存量打标：≤0 无库存 / ≤50 低库存量 / 50–100 库存量正常 / >300 库存重点。按平台仓库存量分档（100–300 源规则未覆盖，暂归正常）'
 };
 const TIP_DIM={
   n:'该维度下命中的 SKU 个数',
@@ -1549,6 +1638,7 @@ function skuMCell(r,k){
     case 'tagR': return '<td class="tagc">'+tagChip(tagR(r.f4>0?r.q4/r.f4:null))+'</td>';
     case 'tagP': return '<td class="tagc">'+tagChip(tagP(r.pr))+'</td>';
     case 'tagD': return '<td class="tagc">'+tagChip(tagD(days,r.invP))+'</td>';
+    case 'tagS': return '<td class="tagc">'+tagChip(tagS(r.invP))+'</td>';
     default:     return '<td>—</td>';
   }
 }
@@ -2157,13 +2247,14 @@ function renderAno(){
   /* ---------- 打标异常速览：预测达成 / 利润率 / 可售天数 三类 ---------- */
   (function(){
     const host=$('#anoTags'); if(!host) return;
-    const R={}, P={}, D={};
+    const R={}, P={}, D={}, S={};
     const add=function(o,k){ o[k]=(o[k]||0)+1; };
     mat.forEach(function(r){
       const f=FL(r);
       add(R, tagR(f.rt).k);
       add(P, tagP(f.pr).k);
       add(D, tagD(f.d, r.invP).k);
+      add(S, tagS(r.invP).k);
     });
     const mk=function(k,c,t,n){ return {k:k,c:c,t:t,n:n||0}; };
     const RS=[
@@ -2181,10 +2272,15 @@ function renderAno(){
       mk('warn','warn','缺货',D.warn), mk('oos','oos','断货',D.oos),
       mk('dead','na','无动销',D.dead), mk('na','na','无数据',D.na)
     ];
+    const SS=[
+      mk('zero','oos','无库存',S.zero), mk('low','warn','低库存量',S.low),
+      mk('ok','ok','库存量正常',S.ok), mk('heavy','pile','库存重点',S.heavy)
+    ];
     const TIPS={
       r:'口径：最新预测达成 ≥110% 超达 · 90–110% 达成 · 80–90% 达成偏低 · <80% 严重低达',
       p:'口径：毛利率 ≤0 负毛利 · 0–8% 低毛利 · 8–13% 正常毛利 · >13% 高毛利',
-      d:'口径：平台仓可售天数 <0 断货 · ≤30 天缺货 · 30–70 天正常 · ≥70 天压货'
+      d:'口径：平台仓可售天数 <0 断货 · ≤30 天缺货 · 30–70 天正常 · ≥70 天压货',
+      s:'口径：平台仓库存量 ≤0 无库存 · ≤50 低库存量 · 50–100 库存量正常 · >300 库存重点（100–300 源规则未覆盖，暂归正常）'
     };
     const card=function(title,items,badKeys,tip,tone){
       const bad=items.filter(function(x){ return badKeys.indexOf(x.k)>=0 && x.n; })
@@ -2199,11 +2295,13 @@ function renderAno(){
     host.innerHTML=
       card('预测达成异常',RS,['low','bad'],TIPS.r)+
       card('低毛利异常',PS,['low','neg'],TIPS.p)+
-      card('可售天数压货异常',DS,['pile'],TIPS.d);
+      card('可售天数压货异常',DS,['pile'],TIPS.d)+
+      card('库存量异常',SS,['zero','low','heavy'],TIPS.s);
     const defs=[
       {items:RS, pred:function(r,k){ return tagR(FL(r).rt).k===k; }, name:'预测达成'},
       {items:PS, pred:function(r,k){ return tagP(FL(r).pr).k===k; }, name:'利润率'},
-      {items:DS, pred:function(r,k){ return tagD(FL(r).d, r.invP).k===k; }, name:'可售天数'}
+      {items:DS, pred:function(r,k){ return tagD(FL(r).d, r.invP).k===k; }, name:'可售天数'},
+      {items:SS, pred:function(r,k){ return tagS(r.invP).k===k; }, name:'库存量'}
     ];
     host.querySelectorAll('.tagcard').forEach(function(c,ci){
       const d=defs[ci];
@@ -2232,7 +2330,10 @@ function renderAno(){
        lab:{high:'高毛利',ok:'正常毛利',low:'低毛利',neg:'负毛利',na:'无数据'}},
       {name:'可售天数', fn:function(r){ return tagD(FL(r).d, r.invP); },
        order:['ok','dead','pile','warn','oos','na'], bad:['pile','warn','oos'],
-       lab:{ok:'正常',dead:'无动销',pile:'压货',warn:'缺货',oos:'断货',na:'无数据'}}
+       lab:{ok:'正常',dead:'无动销',pile:'压货',warn:'缺货',oos:'断货',na:'无数据'}},
+      {name:'库存量', fn:function(r){ return tagS(r.invP); },
+       order:['ok','low','zero','heavy'], bad:['zero','low','heavy'],
+       lab:{ok:'库存量正常',low:'低库存量',zero:'无库存',heavy:'库存重点'}}
     ];
     let cur='bu';
 
@@ -2259,7 +2360,7 @@ function renderAno(){
       const show=gs.slice(0,12);
       let h='<table class="tdt"><thead><tr><th class="l">'+d.n+'</th><th>SKU数</th>'+
         '<th>达成率</th><th>预测打标分布</th><th>毛利率</th><th>利润打标分布</th>'+
-        '<th>平台仓库存</th><th>可售天数</th><th>自发仓库存</th><th>可售打标分布</th>'+
+        '<th>平台仓库存</th><th>库存量打标分布</th><th>可售天数</th><th>自发仓库存</th><th>可售打标分布</th>'+
         '</tr></thead><tbody>';
       show.forEach(function(g){
         const m=M(agg(g.rows));
@@ -2269,7 +2370,8 @@ function renderAno(){
           '<td class="l nm">'+String(g.k)+'</td><td>'+nf(g.rows.length)+'</td>'+
           '<td>'+pct(m.rate)+'</td><td>'+cell(g.rows,SER[0])+'</td>'+
           '<td'+(m.pr!=null&&m.pr<0?' class="hot"':'')+'>'+pct(m.pr)+'</td><td>'+cell(g.rows,SER[1])+'</td>'+
-          '<td>'+nf(m.invP)+'</td><td class="'+dcls+'">'+(dd==null?'—':nf(dd,0)+'天')+'</td><td>'+nf(m.invS)+'</td>'+
+          '<td>'+nf(m.invP)+'</td><td>'+cell(g.rows,SER[3])+'</td>'+
+          '<td class="'+dcls+'">'+(dd==null?'—':nf(dd,0)+'天')+'</td><td>'+nf(m.invS)+'</td>'+
           '<td>'+cell(g.rows,SER[2])+'</td></tr>';
       });
       h+='</tbody></table>';
@@ -2710,7 +2812,7 @@ const SKU_COLS=[['sku','SKU','l'],['asin','ASIN','l'],['bg','业务组','l'],
   ['aBS','4周累计达成·最新版',''],['aCI','4周累计达成·加权',''],['tagR','预测打标','t'],
   ['pr','利润率',''],['tagP','利润率打标','t'],
   ['adp','Spend%',''],['whp','仓储占比',''],['acos','Acos',''],
-  ['invP','平台仓库存',''],['invS','自发仓库存',''],['inv','总库存',''],['days','可售天数',''],['tagD','可售天数打标','t']];
+  ['invP','平台仓库存',''],['tagS','库存量打标','t'],['invS','自发仓库存',''],['inv','总库存',''],['days','可售天数',''],['tagD','可售天数打标','t']];
 
 function skuSorted(rows){
   const key=SKU_ST.sort, dir=SKU_ST.dir;
@@ -2787,7 +2889,8 @@ function renderSkuTable(all, idx){
       '<td class="tagc">'+tagChip(tagR(r.f4>0?r.q4/r.f4:null))+'</td>'+
       '<td>'+pct(r.pr)+'</td><td class="tagc">'+tagChip(tagP(r.pr))+'</td>'+
       '<td>'+pct(r.adp)+'</td><td>'+pct(r.whp)+'</td><td>'+pct(r.acos)+'</td>'+
-      '<td>'+nf(r.invP)+'</td><td>'+nf(r.invS)+'</td><td>'+nf(r.inv)+'</td><td>'+dayChip(days)+'</td>'+
+      '<td>'+nf(r.invP)+'</td><td class="tagc">'+tagChip(tagS(r.invP))+'</td>'+
+      '<td>'+nf(r.invS)+'</td><td>'+nf(r.inv)+'</td><td>'+dayChip(days)+'</td>'+
       '<td class="tagc">'+tagChip(tagD(days,r.invP))+'</td></tr>';
   });
   if(!view.length){
@@ -2888,11 +2991,11 @@ function exportCsv(rows, tag, slim){
   const head = slim
     ? ['SKU','ASIN','业务组','BU','三级分类','负责人','场景-最新','4周订单','4周最新版预测',
        '最新周达成·最新版','最新周达成·加权','4周累计达成·最新版','4周累计达成·加权',
-       '利润率','广告占比','仓储占比','Acos','平台仓库存','自发仓库存','总库存(平台+自发)','平台仓可售天数']
+       '利润率','广告占比','仓储占比','Acos','平台仓库存','库存量打标','自发仓库存','总库存(平台+自发)','平台仓可售天数']
     : ['SKU','ASIN','业务组','BU','三级分类','国家Listing','负责人','淘汰','SET','场景-月初','场景-最新','策略方向',
     '4周订单','4周最新版预测','4周加权预测',
     '最新周达成·最新版','最新周达成·加权','4周累计达成·最新版','4周累计达成·加权','周均缺口','利润率','广告占比','仓储占比','Acos',
-    '平台仓库存','自发仓库存','总库存(平台+自发)','平台仓7DMS','平台仓可售天数','4周均价(税后RMB)',
+    '平台仓库存','库存量打标','自发仓库存','总库存(平台+自发)','平台仓7DMS','平台仓可售天数','4周均价(税后RMB)',
     '促销提报建议','禁止提报原因','广告建议','调拨建议','库存类型','连续重度压货','折扣力度'];
   const lines=[head.join(',')];
   rows.forEach(r=>{
@@ -2901,13 +3004,13 @@ function exportCsv(rows, tag, slim){
          PV(r.aBW),PV(r.aCM),PV(r.aBS),PV(r.aCI),
          r.pr==null?'':(r.pr*100).toFixed(2)+'%', r.adp==null?'':(r.adp*100).toFixed(2)+'%',
          r.whp==null?'':(r.whp*100).toFixed(2)+'%',
-         r.acos==null?'':(r.acos*100).toFixed(2)+'%', r.invP,(r.invS||0),r.inv, r.d7>0?(r.invP/r.d7).toFixed(1):'']
+         r.acos==null?'':(r.acos*100).toFixed(2)+'%', r.invP,tagS(r.invP).t,(r.invS||0),r.inv, r.d7>0?(r.invP/r.d7).toFixed(1):'']
       : [r.sku,r.asin,r.bg,r.bu,r.c3,r.lst,r.own,r.elim?'是':'否',r.set,r.sc0,r.sc,r.dir,
       r.q4,(r.f4||0).toFixed(2),(r.wq4||0).toFixed(2),
       PV(r.aBW),PV(r.aCM),PV(r.aBS),PV(r.aCI),
       ((r.q4-r.f4)/4).toFixed(2), r.pr==null?'':(r.pr*100).toFixed(2)+'%', r.adp==null?'':(r.adp*100).toFixed(2)+'%',
       r.whp==null?'':(r.whp*100).toFixed(2)+'%', r.acos==null?'':(r.acos*100).toFixed(2)+'%',
-      r.invP,r.invS,r.inv,(r.d7||0).toFixed(2), r.d7>0?(r.invP/r.d7).toFixed(1):'', (r.px||0).toFixed(2),
+      r.invP,tagS(r.invP).t,r.invS,r.inv,(r.d7||0).toFixed(2), r.d7>0?(r.invP/r.d7).toFixed(1):'', (r.px||0).toFixed(2),
       r.promo,r.blk,r.adv,r.mv,r.invt,r.con?'是':'否',r.disc];
     lines.push(v.map(x=>{
       const s=String(x==null?'':x);
@@ -2932,7 +3035,7 @@ function renderFoot(){
   <div><b>利润率 / 广告占比 / 仓储占比</b>：按 4 周收入（订单销量 × 4周均价税后 RMB）加权；<b>Acos</b>＝Σ花费 ÷ Σ广告销售额，其中花费＝广告占比 × 收入、广告销售额＝花费 ÷ SKU Acos。</div>
   <div><b>平台仓可售天数</b>＝Σ平台仓可销售展示库存 ÷ Σ平台仓 7DMS（不含自发仓）；<b>断货</b>＝平台仓库存 ≤0；<b>压货</b>＝平台仓可售天数 &gt;70 天或 M1-M2 连续重度压货；<b>总库存</b>＝平台仓 + 自发仓。</div>
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
-  <div><b>异常判定阈值</b>：达成率 超达 ≥110% / 低达 &lt;90%；利润率 倒挂 &lt;0% / 低毛利 &lt;8% / 达标 ≥13%；可售天数 断货＝平台仓库存 ≤0 / 压货 &gt;70 天（或 M1-M2 连续重度压货）。阈值集中在「02 核心异常监控 · 判定标准」区，可直接核对。</div>
+  <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>明细与导出</b>：SKU 明细位于「04 维度下钻」末层，受全局筛选与下钻路径共同约束，导出支持「当前范围全部 / 当前页 / 精简列」；<b>每个维度层右上角也可导出</b>——「本层汇总」出该层每个分组一行的汇总表（含合计行），「本层 SKU 明细」出该层范围内的 SKU 明细。CSV 均为 UTF-8 BOM（Excel 直接打开）。点击任意行弹出该 SKU 全字段详情。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
@@ -2950,6 +3053,11 @@ let kwTimer=null;
 function boot(){
   renderTop(); renderNav(); renderAll(); renderFoot();
   $('#verSel').addEventListener('change',e=>setVersion(e.target.value));
+  const rb=$('#anoRuleBtn');
+  if(rb) rb.onclick=function(){
+    const box=$('#anoRule'); box.classList.toggle('open');
+    rb.textContent=box.classList.contains('open')?'收起规则表 ▴':'展开规则表 ▾';
+  };
   $('#verBack').addEventListener('click',()=>setVersion(VS.latest));
   $('#trendSel').addEventListener('change',e=>{trendMode=e.target.value;renderAll();});
   $('#fKw').addEventListener('input',e=>{
