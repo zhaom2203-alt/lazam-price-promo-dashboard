@@ -2859,6 +2859,9 @@ const DIM_ALLCOLS=(function(){
 })();
 /* 某些层要额外带出别的维度值（v52）：国家Listing 层加「三级分类 / 销售负责人」 */
 const DIM_EXTRA={
+  /* 三级分类层：带出归属负责人（v53） */
+  2:[{k:'ownx',t:'销售负责人', type:'txt', src:'own'}],
+  /* 国家Listing 层：带出三级分类与负责人（v52） */
   3:[{k:'c3x', t:'三级分类',   type:'txt', src:'c3'},
      {k:'ownx',t:'销售负责人', type:'txt', src:'own'}]
 };
@@ -2872,7 +2875,9 @@ function dimTopTxt(m,key){
   const o=m[key]||{}, ks=Object.keys(o);
   if(!ks.length) return {txt:'—', all:'', n:0};
   ks.sort(function(a,b){ return (o[b]-o[a]) || String(a).localeCompare(String(b)); });
-  return {txt: ks.length>1 ? ks[0]+' 等'+ks.length+'项' : ks[0], all:ks.join(' · '), n:ks.length};
+  const txt = ks.length===1 ? ks[0]
+            : (ks.length===2 ? ks[0]+' / '+ks[1] : ks[0]+' 等'+ks.length+'项');
+  return {txt: txt, all: ks.map(function(k){ return k+' '+o[k]+' 个 SKU'; }).join(' · '), n:ks.length};
 }
 const DIMCOL_TYPE={}; DIMCOLS.forEach(function(c){ DIMCOL_TYPE[c.k]=c.type; });
 /* ---- 维度层筛选（v42）：所有列都可筛 ---- */
