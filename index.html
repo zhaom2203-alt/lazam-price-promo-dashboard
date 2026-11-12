@@ -1045,6 +1045,15 @@ table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
 .scnpg:hover:not(:disabled){border-color:#b9cdf0;color:#1f4bc4}
 .scnpg:disabled{opacity:.4;cursor:default}
 
+/* ---------- 页头：全量导出（v49） ---------- */
+.vrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.allexp{border:1px solid #d6e0f4;background:#fff;border-radius:9px;padding:6px 12px;
+  font-family:inherit;font-size:11.5px;font-weight:600;color:#3d4d68;cursor:pointer;
+  white-space:nowrap;transition:.15s;font-variant-numeric:tabular-nums}
+.allexp:hover{border-color:#b9cdf0;color:#1f4bc4;background:#f4f8ff}
+.allexp:active{background:#eaf0fe}
+@media (max-width:900px){.vrow{width:100%;justify-content:stretch}.allexp{flex:1;text-align:center}}
+
 </style>
 </head>
 <body>
@@ -1059,10 +1068,13 @@ table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
       </div>
     </div>
     <div class="vtop">
+      <div class="vrow">
+      <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】（632 行），忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
       <div class="versel" id="verSelBox">
         <span class="vlab">数据版本</span>
         <select id="verSel"></select>
         <span class="vtag" id="verTag">最新</span>
+      </div>
       </div>
       <div class="meta" id="topMeta"></div>
     </div>
@@ -1467,6 +1479,14 @@ function renderTop(){
     `生成 <b>${DB.builtAt}</b>`
   ].map(t=>`<span class="pill">${t}</span>`).join('');
   $('#logoTag').textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
+  const ae=$('#allExp');
+  if(ae) ae.onclick=()=>{
+    /* 全量：当前版本全部 SKU，绕过全局筛选 / 下钻范围 / 列筛选 */
+    const allRows=ROWS.slice();
+    exportSkuView(allRows, (DB.version||'')+'_全量');
+    ae.textContent='已导出 '+nf(allRows.length)+' 行';
+    setTimeout(()=>{ ae.textContent='全量导出 CSV'; }, 1800);
+  };
   const wr=$('#wkRange'); if(wr) wr.textContent=DB.weekLabels[0]+'–'+DB.weekLabels[3];
   renderVerSel();
 }
@@ -2980,6 +3000,8 @@ function renderDims(){
     });
     const limit=14;
     const shown=st.expand?groups:groups.slice(0,limit);
+    /* 本层「实际纳入导出的 SKU 行」：筛选后的分组展开；无筛选时等于本层范围 */
+    const scopeRows=fKeys.length ? groups.reduce(function(a,g){ return a.concat(g.rows); },[]) : rows;
     const sk=k=>sortKey===k?` sorted`:'';
     const ar=k=>sortKey===k?`<span class="sk">${dir<0?'▼':'▲'}</span>`:'';
 
@@ -2992,8 +3014,8 @@ function renderDims(){
       <button class="fbtn${fOn?' on':''}${fKeys.length?' has':''}" data-fbtn="${i}" title="展开列筛选：数值列支持 &gt;100、&lt;0、8~13；文本列包含匹配；打标列选档位">筛选${fKeys.length?' '+fKeys.length:''}</button>
       <span class="dimexp">
         <select class="sksel" data-expsel="${i}" title="选择导出内容">
-          <option value="sum">本层汇总（${groups.length} 组）</option>
-          <option value="sku">本层 SKU 明细（${rows.length} 行）</option>
+          <option value="sum">本层汇总 · 当前筛选（${groups.length} 组）</option>
+          <option value="sku">本层 SKU 明细 · 当前筛选（${nf(scopeRows.length)} 行）</option>
         </select>
         <button class="expbtn mini" data-expgo="${i}">导出 CSV</button>
       </span>`));
@@ -3031,7 +3053,7 @@ function renderDims(){
         <td>${nf(m.invP)}</td><td>${dayChip(m.days)}</td><td class="l">${tagChip(tagD(m.days,m.invP))}</td><td>${nf(m.invS)}</td>
         <td class="l">${cmpBar(m.sc,m.n||1)}</td></tr>`;
     });
-    const sumRows=fKeys.length ? groups.reduce(function(a,g){ return a.concat(g.rows); },[]) : rows;
+    const sumRows=scopeRows;
     dimRows[i]=sumRows;   /* 本层导出跟随筛选结果 */
     dimGroups[i]=groups;  /* 本层汇总导出：顺序与筛选都跟随当前视图 */
     const sm=M(agg(sumRows));
@@ -3235,12 +3257,12 @@ function renderSkuTable(all, idx){
     '<label class="sbl">每页</label>'+
     '<select class="sksel" id="skuSize">'+[40,100,200].map(v=>'<option value="'+v+'"'+(SKU_ST.size===v?' selected':'')+'>'+v+'</option>').join('')+
       '<option value="0"'+(SKU_ST.size===0?' selected':'')+'>全部</option></select>'+
-    '<label class="sbl">导出</label>'+
+    '<label class="sbl">导出当前筛选</label>'+
     '<select class="sksel" id="skuExpScope">'+
-      '<option value="view">与表格同列（'+SKU_COLS.length+' 列 · '+nf(total)+' 行）</option>'+
-      '<option value="all">全部字段（'+nf(total)+' 行）</option>'+
+      '<option value="view">当前筛选结果 · 与表格同列（'+SKU_COLS.length+' 列 · '+nf(total)+' 行）</option>'+
       '<option value="page">当前页（'+nf(view.length)+' 行）</option>'+
-      '<option value="cols">当前范围·精简列（'+nf(total)+' 行）</option>'+
+      '<option value="cols">当前筛选结果 · 精简列（22 列 · '+nf(total)+' 行）</option>'+
+      '<option value="all">当前筛选结果 · 全部字段（38 列 · '+nf(total)+' 行）</option>'+
     '</select>'+
     '<button class="expbtn" id="skuExpBtn">导出 CSV</button>'+
   '</div>';
@@ -3475,7 +3497,7 @@ function renderFoot(){
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
   <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
-  <div><b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
+  <div><b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
   <div><b>异常下钻</b>：<b>01 诊断条 / KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
   <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
