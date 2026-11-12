@@ -992,6 +992,21 @@ table.tagrt .tg em{font-style:normal;font-size:10px;color:#8492a8;margin-left:3p
 .tagrule .trnote{font-size:11px;color:var(--muted);line-height:1.7;padding:9px 2px 2px}
 .tagrule .trnote code{background:#eef2f9;border-radius:4px;padding:1px 5px;font-size:10.5px;color:#4a5b78}
 
+/* ---------- 打标列下拉筛选 ---------- */
+table.dt tr.filrow select.fin,
+table.skmt tr.skf select.fin{
+  width:100%;min-width:56px;box-sizing:border-box;font-family:inherit;font-size:11px;
+  border:1px solid #dbe4f4;border-radius:5px;background:#fff;color:var(--ink);
+  padding:2px 1px 2px 3px;height:23px;line-height:1;cursor:pointer;outline:none;
+  text-overflow:ellipsis}
+table.dt tr.filrow select.fin:focus,
+table.skmt tr.skf select.fin:focus{
+  outline:2px solid rgba(47,91,215,.25);outline-offset:0;border-color:#9db8ec}
+/* 已选条件的下拉高亮，便于一眼看出哪列在筛 */
+table.dt tr.filrow select.fin.on,
+table.skmt tr.skf select.fin.on{
+  border-color:#9db8ec;background:#f2f7ff;color:#1f4bc4;font-weight:600}
+
 </style>
 </head>
 <body>
@@ -1250,6 +1265,27 @@ const tagD = (d,invP)=>{
   return            {k:'pile', t:'压货', c:'pile'};
 };
 const tagChip = t=>'<span class="tg '+t.c+'">'+t.t+'</span>';
+/* 打标档位清单：用于筛选下拉（顺序即语义顺序） */
+const TAG_OPTS={
+  tagR:[['over','超达'],['ok','达成'],['low','达成偏低'],['bad','严重低达'],['na','无预测']],
+  tagP:[['neg','负毛利'],['low','低毛利'],['ok','正常毛利'],['high','高毛利'],['na','无数据']],
+  tagD:[['oos','断货'],['warn','缺货'],['ok','正常'],['pile','压货'],['dead','无动销'],['na','无数据']],
+  tagS:[['zero','无库存'],['low','低库存量'],['ok','库存量正常'],['heavy','库存重点']]
+};
+/* 取 SKU 在指定打标列上的档位 key（与列内显示用的是同一套判定函数） */
+function tagKey(r,k){
+  if(k==='tagR') return tagR(r.f4>0?r.q4/r.f4:null).k;
+  if(k==='tagP') return tagP(r.pr).k;
+  if(k==='tagS') return tagS(r.invP).k;
+  if(k==='tagD') return tagD(r.d7>0?r.invP/r.d7:null, r.invP).k;
+  return null;
+}
+function tagSelHTML(k,val,attr){
+  const opts=TAG_OPTS[k]||[], A=attr||'data-k';
+  return '<select class="fin fsel'+(val?' on':'')+'" '+A+'="'+k+'"><option value="">全部</option>'+
+    opts.map(function(o){ return '<option value="'+o[0]+'"'+(val===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+  '</select>';
+}
 /* 库存量打标：按平台仓库存量分档。≤0 无库存 / ≤50 低库存量 / 50–100 正常 / >300 库存重点
    注：源规则未覆盖 100–300，暂归入「库存量正常」，待业务确认 */
 const tagS = invP=>{
@@ -1655,6 +1691,7 @@ const SKM_TGT={sku:'包含',asin:'包含',bg:'包含',c3:'包含',own:'包含',s
 function skmVal(r,k){
   if(k==='rate') return r.f4>0?r.q4/r.f4:null;
   if(k==='days') return r.d7>0?r.invP/r.d7:null;
+  if(TAG_OPTS[k]) return tagKey(r,k);
   return r[k];
 }
 function skmActive(){
@@ -1671,6 +1708,7 @@ function skmList(){
         const tp=SKU_TYPES[k]||'num';
         const raw=skmVal(r,k);
         if(tp==='txt') return raw!=null && String(raw).toLowerCase().indexOf(expr.toLowerCase())>=0;
+        if(tp==='tag') return raw===expr;
         if(raw==null) return false;
         const v=(tp==='pct')?Math.round(raw*1000)/10:raw;
         const fn=fParse(expr);
@@ -1714,7 +1752,7 @@ function skmFilHTML(){
   if(!SKM.fs) return '';
   return '<tr class="skf">'+SKU_COLS.map(function(c){
     const k=c[0];
-    if(c[2]==='t') return '<td></td>';
+    if(c[2]==='t') return '<td>'+tagSelHTML(k,SKM.f[k]||'','data-sfk')+'</td>';
     return '<td><input data-sfk="'+k+'" value="'+ESCA(SKM.f[k]||'')+'" placeholder="'+(SKM_TGT[k]||'')+'"></td>';
   }).join('')+'</tr>';
 }
@@ -1805,6 +1843,12 @@ function openSkuList(label, rows){
         const again=mask.querySelector('input[data-sfk="'+k+'"]');
         if(again){ again.focus(); try{ again.setSelectionRange(caret,caret); }catch(err){} }
       },260);
+    });
+    mask.addEventListener('change', function(e){
+      const sel=e.target.closest('select[data-sfk]');
+      if(!sel) return;
+      SKM.f[sel.dataset.sfk]=sel.value;
+      skmPaint(true);
     });
     mask.addEventListener('keydown', function(e){
       if(e.key==='Enter' && e.target.closest('input[data-sfk]')){ e.preventDefault(); e.target.blur(); }
@@ -2781,13 +2825,15 @@ const SKU_ST={page:1,size:40,sort:'q4',dir:-1,fs:false,f:{}};
 /* SKU 层列筛选：文本列按包含匹配，数值列支持 >N / <N / a~b / 精确值，百分列按显示值比较 */
 const SKU_TYPES={sku:'txt',asin:'txt',bg:'txt',c3:'txt',own:'txt',sc:'txt',
   q4:'int',f4:'int',rate:'pct',aBW:'pct',aCM:'pct',aBS:'pct',aCI:'pct',pr:'pct',adp:'pct',whp:'pct',acos:'pct',
-  invP:'int',invS:'int',inv:'int',days:'num'};
+  invP:'int',invS:'int',inv:'int',days:'num',
+  tagR:'tag',tagP:'tag',tagD:'tag',tagS:'tag'};
 const SKU_PH={sku:'包含',asin:'包含',bg:'包含',c3:'包含',own:'包含',sc:'包含',
   q4:'>100',f4:'>0',rate:'<80',aBW:'<80',aCM:'<80',aBS:'<80',aCI:'<80',pr:'<0',adp:'>8',whp:'>2',acos:'>10',
   invP:'<=0',invS:'>0',inv:'>500',days:'>70'};
 function skuVal(r,k){
   if(k==='rate') return r.f4>0?r.q4/r.f4:null;
   if(k==='days') return r.d7>0?r.invP/r.d7:null;
+  if(TAG_OPTS[k]) return tagKey(r,k);
   return r[k];
 }
 function skuFilter(rows){
@@ -2799,6 +2845,7 @@ function skuFilter(rows){
       const tp=SKU_TYPES[k]||'num';
       const raw=skuVal(r,k);
       if(tp==='txt') return raw!=null && String(raw).toLowerCase().indexOf(expr.toLowerCase())>=0;
+      if(tp==='tag') return raw===expr;
       if(raw==null) return false;
       const v=(tp==='pct')?Math.round(raw*1000)/10:raw;
       const fn=fParse(expr);
@@ -2870,7 +2917,7 @@ function renderSkuTable(all, idx){
   if(SKU_ST.fs){
     h+='<tr class="filrow">'+SKU_COLS.map(function(c){
       const k=c[0];
-      if(c[2]==='t') return '<td></td>';
+      if(c[2]==='t') return '<td>'+tagSelHTML(k,SKU_ST.f[k]||'')+'</td>';
       return '<td><input class="fin" data-k="'+k+'" value="'+ESCA(SKU_ST.f[k]||'')+'" placeholder="'+(SKU_PH[k]||'')+'"></td>';
     }).join('')+'</tr>';
   }
@@ -2926,6 +2973,9 @@ function renderSkuTable(all, idx){
       },320);
     };
     inp.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } };
+  });
+  host.querySelectorAll('select.fsel[data-k]').forEach(function(sel){
+    sel.onchange=function(){ SKU_ST.f[sel.dataset.k]=sel.value; SKU_ST.page=1; renderSkuTable(all,idx); };
   });
   host.querySelectorAll('tbody tr[data-sku]').forEach(tr=>{
     tr.style.cursor='pointer';
