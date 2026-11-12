@@ -1054,6 +1054,14 @@ table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
 .allexp:active{background:#eaf0fe}
 @media (max-width:900px){.vrow{width:100%;justify-content:stretch}.allexp{flex:1;text-align:center}}
 
+/* 01 概况：9 张 KPI 卡（v51）——用 flex 让每行末尾自动铺满，避免右侧留空 */
+.kpis.nine{display:flex;flex-wrap:wrap;gap:10px;padding:14px 16px 6px}
+.kpis.nine .kpi{flex:1 1 calc(20% - 8px);min-width:0}
+@media (max-width:1100px){.kpis.nine .kpi{flex:1 1 calc(33.33% - 7px)}}
+@media (max-width:760px){.kpis.nine .kpi{flex:1 1 calc(50% - 5px)}}
+.kpis.nine .kpi .k{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpis.nine .kpi .s{font-size:10.5px;line-height:1.5}
+
 </style>
 </head>
 <body>
@@ -1106,7 +1114,7 @@ table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
           <div class="bmeta" id="s1meta"></div>
         </div>
         <div class="diagbar" id="diagBar"></div>
-        <div class="kpis" id="kpis"></div>
+        <div class="kpis nine" id="kpis"></div>
         <div class="warnline" id="kpiWarn"></div>
         <div class="insights" id="insights"></div>
         <div class="subhead"><span>业务组表现 <b>当前筛选范围</b></span></div>
@@ -1410,6 +1418,7 @@ function M(o){
     rate: o.f>0?o.q/o.f:null,
     wrate: o.wq>0?o.q/o.wq:null,
     /* 四个达成率：最新周 / 4周累计 × 最新版 / 加权，全部按 Σ分子/Σ分母 重算 */
+    lg1:o.lg1, lf1:o.lf1, lk1:o.lk1, g4:o.g4, f4w:o.f4w, k4:o.k4,
     rateL1:  o.lk1>0 ? o.lg1/o.lk1 : null,
     wrateL1: o.lf1>0 ? o.lg1/o.lf1 : null,
     rate4:   o.k4 >0 ? o.g4 /o.k4  : null,
@@ -1952,6 +1961,11 @@ function renderOverview(){
   const underP=r=>r.f4>0 && r.q4/r.f4<0.9;
   const hitP  =r=>r.f4>0 && r.q4/r.f4>=0.9 && r.q4/r.f4<1.1;
   const overP =r=>r.f4>0 && r.q4/r.f4>=1.1;
+  /* 四组达成率的 SKU 级：取明细表原生列，与 04 / SKU 表同源 */
+  const underBS=r=>r.aBS!=null && r.aBS<0.9;
+  const underBW=r=>r.aBW!=null && r.aBW<0.9;
+  const underCM=r=>r.aCM!=null && r.aCM<0.9;
+  const underCI=r=>r.aCI!=null && r.aCI<0.9;
   const negP  =r=>r.pr!=null && r.pr<0;
   const feeP  =r=>r.adp!=null && r.adp>0.06;
   /* 与 M() 里的 pile 计数保持同一条件：con=1 或 7DMS>0 且可售>70 天。
@@ -1970,11 +1984,18 @@ function renderOverview(){
   const k=[
     {k:'覆盖 SKU',v:nf(m.n),s:`淘汰 <b>${nf(m.elim)}</b> 个`,hl:1,tone:''},
     {k:'4周订单销量',v:nf(m.q),s:`周均 <b>${nf(m.q/4,0)}</b> 件`,tone:''},
-    {k:'最新版订单达成率',v:pct(m.rate),s:`周均缺口 <b>${nf(m.gapW,1)}</b> 件 · 覆盖 <b>${pct(m.cover,0)}</b>`,hl:1,
-      tone:m.rate==null?'':(m.rate<0.9?'down':(m.rate>=1?'up':'warn')),
-      drill:['未达 <90%',underP]},
-    {k:'加权订单达成率',v:pct(m.wrate),s:`加权预测 <b>${nf(m.wq,0)}</b>`,
-      tone:m.wrate==null?'':(m.wrate<0.9?'down':(m.wrate>=1?'up':'warn'))},
+    {k:'4周累计达成·最新版',v:pct(m.rate4),s:`周均缺口 <b>${nf(m.gapW,1)}</b> 件 · 覆盖 <b>${pct(m.cover,0)}</b>`,hl:1,
+      tone:m.rate4==null?'':(m.rate4<0.9?'down':(m.rate4>=1?'up':'warn')),
+      drill:['4周累计·最新版 <90%',underBS]},
+    {k:'最新周达成·最新版',v:pct(m.rateL1),s:`最新周 <b>${nf(m.lg1,0)}</b> ÷ <b>${nf(m.lk1,0)}</b> 件`,hl:1,
+      tone:m.rateL1==null?'':(m.rateL1<0.9?'down':(m.rateL1>=1?'up':'warn')),
+      drill:['最新周·最新版 <90%',underBW]},
+    {k:'最新周达成·加权',v:pct(m.wrateL1),s:`加权预测 <b>${nf(m.lf1,0)}</b> 件`,
+      tone:m.wrateL1==null?'':(m.wrateL1<0.9?'down':(m.wrateL1>=1?'up':'warn')),
+      drill:['最新周·加权 <90%',underCM]},
+    {k:'4周累计达成·加权',v:pct(m.wrate4),s:`加权预测 <b>${nf(m.f4w,0)}</b> 件`,
+      tone:m.wrate4==null?'':(m.wrate4<0.9?'down':(m.wrate4>=1?'up':'warn')),
+      drill:['4周累计·加权 <90%',underCI]},
     {k:'4周利润率',v:pct(m.pr),s:`业务毛利口径（已扣广告/仓储）`,tone:m.pr==null?'':(m.pr<0?'down':(m.pr>=0.08?'up':'warn')),
       drill:['毛利倒挂 <0%',negP]},
     {k:'广告费比',v:pct(m.adp),s:`Acos <b>${pct(m.acos)}</b> · 仓储 <b>${pct(m.whp)}</b>`,
@@ -2076,7 +2097,7 @@ function renderOverview(){
     const gt=(mm.rate==null?'':(mm.rate<0.9?'down':(mm.rate>=1?'up':'warn')));
     return `<div class="scard${F.bg===s.g?' on':''}" data-bg="${s.g}">
       <div class="sh"><div class="sname"><span class="dotsq" style="background:${BG_COLOR[s.g]||'#5b6c8c'}"></span>${s.g}</div>${rateChip(mm.rate)}</div>
-      <div class="sline${gt?' tone-'+gt:''}"><span class="big">${pct(mm.rate)}</span><span class="unit">最新版订单达成率</span></div>
+      <div class="sline${gt?' tone-'+gt:''}"><span class="big">${pct(mm.rate)}</span><span class="unit">4周累计达成·最新版</span></div>
       <div class="sstats">
         <div class="sstat"><span class="sl">4周订单销量</span><span class="sv">${wan(mm.q)}</span></div>
         <div class="sstat"><span class="sl">4周利润率</span><span class="sv">${pct(mm.pr)}</span></div>
@@ -3491,8 +3512,7 @@ function renderFoot(){
   $('#footNotes').innerHTML=`
   <div><b>数据版本</b>：当前 ${DB.version}（${DB.weekLabels[0]}–${DB.weekLabels[3]}）｜共 ${VS.order.length} 个版本，切换在页面右上角；切版本会清空筛选与下钻，其余交互不变。</div>
   <div><b>数据源</b>：${DB.source}｜明细表（${nf(ROWS.length)} 行，一个 SKU 一行）｜周期 ${DB.weeks[0]} ~ ${DB.weeks[3]}（4 周）</div>
-  <div><b>订单达成率</b>＝Σ4周订单销量 ÷ Σ4周最新版预测；<b>加权订单达成率</b>＝Σ4周订单销量 ÷ Σ4周加权预测。组级一律按量重算，不做比率平均，避免小分母失真。</div>
-  <div><b>四组达成率口径</b>（04 维度下钻与 SKU 明细）：<b>最新周达成·最新版</b>＝最新周订单 ÷ 最新周最新版预测（等价明细表 BW 列）；<b>最新周达成·加权</b>＝最新周订单 ÷ 最新周加权预测（CM 列）；<b>4周累计达成·最新版</b>＝4周订单之和 ÷ 4周最新版预测之和（BS 列）；<b>4周累计达成·加权</b>＝4周订单之和 ÷ 4周加权预测之和（CI 列）。前两列 SKU 级直接取明细表百分比，BU / 销售负责人 / 三级分类 / 国家Listing 四层则用「预测达成」表逐周数值重新求和相除（不用明细表百分比做平均）。<b>注意</b>：分母为 0 的 SKU（无最新版 / 无加权预测）其订单仍计入分子，与 01 的「加权订单达成率」保持同一口径。</div>
+  <div><b>四组达成率</b>（01 KPI 卡、04 维度四层、03 场景表、SKU 明细同一口径）：<b>4周累计·最新版</b>＝Σ4周订单 ÷ Σ4周最新版预测（＝明细表 BS 列）；<b>最新周·最新版</b>＝最新周（${DB.weekLabels[3]}）订单 ÷ 当周最新版预测（BW 列）；<b>最新周·加权</b>＝最新周订单 ÷ 当周加权预测（CM 列）；<b>4周累计·加权</b>＝Σ4周订单 ÷ Σ4周加权预测（CI 列）。SKU 级直接取明细表原生列；BU / 销售负责人 / 三级分类 / 国家Listing 与 03 场景则用「预测达成」表逐周数值分别求和后相除，<b>不对明细表百分比做平均</b>。分母为 0 的 SKU（无预测）其订单仍计入分子。</div>
   <div><b>毛利率 / 广告费比 / 仓储费比 / ACOS</b>：四个指标全部由<b>金额和比</b>得出，绝不对比率求平均。<b>毛利率</b>＝Σ业务毛利 ÷ Σ收入总额(审计)；<b>广告费比</b>＝Σ产品营销费 ÷ Σ收入总额(审计)；<b>仓储费比</b>＝Σ自发仓储费 ÷ Σ收入总额(审计)——三者取「毛利监控」表（国家=BR、渠道=AMZ、周期 ${DB.weekLabels[0]}–${DB.weekLabels[3]}）按 最早SKU 汇总；<b>ACOS</b>＝ΣSPEND$ ÷ ΣTotal ads Sales$，取「广告报表」表同条件汇总。SKU 级同样用金额相除（与毛利监控 L 列「业务毛利率」同源可校验），BU / 负责人 / 分类 / Listing 与 03 场景均为组内金额相加后再相除。</div>
   <div><b>平台仓可售天数</b>＝Σ平台仓可销售展示库存 ÷ Σ平台仓 7DMS（不含自发仓）；<b>断货</b>＝平台仓库存 ≤0；<b>压货</b>＝平台仓可售天数 &gt;70 天或 M1-M2 连续重度压货；<b>总库存</b>＝平台仓 + 自发仓。</div>
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
