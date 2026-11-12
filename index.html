@@ -1007,6 +1007,20 @@ table.dt tr.filrow select.fin.on,
 table.skmt tr.skf select.fin.on{
   border-color:#9db8ec;background:#f2f7ff;color:#1f4bc4;font-weight:600}
 
+/* ---------- 04 维度层：全列筛选（v42） ---------- */
+table.dt tr.filrow td.fc{text-align:center;padding:2px 0}
+table.dt tr.filrow td.fc .fclear{display:inline-block;width:16px;height:16px;line-height:15px;
+  border-radius:5px;background:#eef2f9;color:#7d8aa2;font-size:10px;font-weight:700;
+  cursor:pointer;transition:.14s}
+table.dt tr.filrow td.fc .fclear:hover{background:#fbe0dd;color:#b3271f}
+/* 有 datalist 候选的输入框：右侧箭头交给浏览器原生渲染，只收紧内边距 */
+table.dt tr.filrow input.fin{padding:3px 3px 3px 5px}
+table.dt tr.filrow input.fin::-webkit-calendar-picker-indicator{opacity:.45;margin-left:-2px}
+table.dt tr.filrow input.fin:hover::-webkit-calendar-picker-indicator{opacity:.8}
+/* # 列固定宽，避免无内容时被压成 0 导致组名格左移 */
+table.dt tr.filrow td.fc{width:30px;min-width:30px}
+table.dt tr.filrow input.fin[data-k="__g"],table.dt tr.filrow input.fin[data-k="sc"]{min-width:84px}
+
 </style>
 </head>
 <body>
@@ -2530,6 +2544,59 @@ const DIMCOLS=[
   {k:'invS',t:'自发仓库存',   type:'int'}
 ];
 const DIMCOL_TYPE={}; DIMCOLS.forEach(function(c){ DIMCOL_TYPE[c.k]=c.type; });
+/* ---- 维度层筛选（v42）：所有列都可筛 ---- */
+/* 非 DIMCOLS 的列：组名（文本）、三类组级打标、场景构成（文本） */
+const DIMF_TYPE={__g:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt'};
+DIMCOLS.forEach(function(c){ DIMF_TYPE[c.k]=c.type; });
+/* 数值列的下拉候选（点输入框右侧箭头可展开，也可直接手输任意表达式） */
+const DIMF_HINT={
+  n:['>0','>5','>10'], q:['>0','>100','>1000'], qp:['>1','>5','>10'],
+  f:['>0','>100','>1000'],
+  rate:['<80','80~90','90~110','>110'], rateL1:['<80','80~90','90~110','>110'],
+  wrateL1:['<80','80~90','90~110','>110'], wrate4:['<80','80~90','90~110','>110'],
+  gap:['<0','<10','>0','>50'],
+  pr:['<0','0~8','8~13','>13'], adp:['>8','>12','>15'], whp:['>2','>4'], acos:['>10','>15'],
+  invP:['<=0','>0','>500','>1000'], days:['<0','<=30','30~70','>70'], invS:['>0','>100','>500']
+};
+/* 取某组在某筛选列上的原值（打标列返回档位 key，严格匹配；其余返回显示值） */
+function dimFVal(g,k,totQ){
+  if(k==='__g')  return String(g.k);
+  if(k==='tagR') return tagR(g.m.rate).k;
+  if(k==='tagP') return tagP(g.m.pr).k;
+  if(k==='tagD') return tagD(g.m.days, g.m.invP).k;
+  if(k==='sc')   return g.m.sc?Object.keys(g.m.sc).join(' '):'';
+  return dimVal(k, g.m, totQ);
+}
+/* 单个组的单条件判断：文本/打标 → 包含/精确；数值 → >N / <N / a~b / 等于 */
+function dimFMatch(g,k,expr,totQ){
+  const tp=DIMF_TYPE[k]||'num';
+  const raw=dimFVal(g,k,totQ);
+  if(tp==='tag') return raw===String(expr);
+  if(tp==='txt') return raw!=null && String(raw).toLowerCase().indexOf(String(expr).toLowerCase())>=0;
+  if(raw==null) return false;
+  const v=(tp==='pct')?Math.round(raw*1000)/10:raw;   /* 百分列按显示值（1 位小数）比较 */
+  const fn=fParse(expr);
+  return fn?fn(v):true;
+}
+/* 筛选格：输入框 + datalist（有候选值时才挂，输入框右侧出现下拉箭头） */
+function dimFilInput(i,k,st,ph,vals){
+  const v=String((st.f&&st.f[k])||'').replace(/"/g,'&quot;');
+  const id='dl'+i+'_'+String(k).replace(/[^a-z0-9]/gi,'');
+  const has=!!(vals&&vals.length);
+  let out='<input class="fin" data-l="'+i+'" data-k="'+k+'" value="'+v+'" placeholder="'+ph+'"'+(has?' list="'+id+'"':'')+'>';
+  if(has) out+='<datalist id="'+id+'">'+vals.map(function(x){
+    return '<option value="'+String(x).replace(/"/g,'&quot;')+'"></option>';
+  }).join('')+'</datalist>';
+  return out;
+}
+/* 打标列：下拉选档位（精确匹配 key，与列内标签同一套判定） */
+function dimTagSel(i,k,st){
+  const cur=(st.f&&st.f[k])||'', opts=TAG_OPTS[k]||[];
+  return '<select class="fin fsel'+(cur?' on':'')+'" data-l="'+i+'" data-k="'+k+'">'+
+    '<option value="">全部</option>'+
+    opts.map(function(o){ return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+  '</select>';
+}
 function dimVal(k,m,totQ){
   switch(k){
     case 'n':    return m.n;
@@ -2610,21 +2677,16 @@ function renderDims(){
       return;
     }
     const all=M(agg(rows));
+    const scNames=Object.keys(all.sc||{});   /* 场景构成列的下拉候选 */
     const st=dimState[i]||(dimState[i]={expand:false});
     st.f=st.f||{};                                 /* 各列筛选表达式 */
     const fOn=!!st.fs;                             /* 筛选行是否展开 */
-    const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k] && String(st.f[k]).trim() && fParse(st.f[k]); });
+    const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k] && String(st.f[k]).trim(); });
     let groups=groupBy(rows,d.f);
+    const gNames=groups.map(function(g){ return String(g.k); });   /* 组名下拉候选：取筛选前的全集 */
     if(fKeys.length){
       groups=groups.filter(function(g){
-        return fKeys.every(function(k){
-          var type=DIMCOL_TYPE[k]||'num';
-          var raw=dimVal(k,g.m,all.q);
-          /* 百分列按“显示值”比较（保留 1 位小数），避免 79.97% 显示 80.0% 却通过 <80 */
-          var v=raw==null?null:(type==='pct'?Math.round(raw*1000)/10:raw);
-          var fn=fParse(st.f[k]);
-          return fn?fn(v):true;
-        });
+        return fKeys.every(function(k){ return dimFMatch(g,k,st.f[k],all.q); });
       });
     }
     const sortKey=st.sort||'q';
@@ -2654,7 +2716,7 @@ function renderDims(){
       <span class="cnt">${nf(groups.length)} 项</span>
       <span class="scope">范围：${scopeText(i)}</span>
       <span class="hint">${i<DIMDEF.length-1?'点击行下钻 →':'点击行查看详情'}</span>
-      <button class="fbtn${fOn?' on':''}${fKeys.length?' has':''}" data-fbtn="${i}" title="展开列筛选（支持 &gt;100、&lt;0、8~13）">筛选${fKeys.length?' '+fKeys.length:''}</button>
+      <button class="fbtn${fOn?' on':''}${fKeys.length?' has':''}" data-fbtn="${i}" title="展开列筛选：数值列支持 &gt;100、&lt;0、8~13；文本列包含匹配；打标列选档位">筛选${fKeys.length?' '+fKeys.length:''}</button>
       <span class="dimexp">
         <select class="sksel" data-expsel="${i}" title="选择导出内容">
           <option value="sum">本层汇总（${groups.length} 组）</option>
@@ -2686,12 +2748,18 @@ function renderDims(){
       <th class="l" style="width:72px">可售天数打标</th>
       <th class="sortable${sk('invS')}" data-i="${i}" data-k="invS">自发仓库存${ar('invS')}</th>
       <th class="l" style="width:112px">场景构成</th></tr>${
-      fOn ? '<tr class="filrow"><td></td><td class="l"><span class="fclear" data-fclear="'+i+'">清除筛选</span></td>'+
+      fOn ? '<tr class="filrow">'+
+        '<td class="fc">'+(fKeys.length?'<span class="fclear" data-fclear="'+i+'" title="清除本层所有筛选条件">✕</span>':'')+'</td>'+
+        '<td class="l">'+dimFilInput(i,'__g',st,'组名',gNames)+'</td>'+
         DIMCOLS.map(function(c){
-          return '<td><input class="fin" data-l="'+i+'" data-k="'+c.k+'" value="'+String(st.f[c.k]||'').replace(/"/g,'&quot;')+
-            '" placeholder="'+(c.type==='pct'?'8~13':(c.type==='int'?'>100':'30~70'))+'"></td>'+
-            ((c.k==='rate'||c.k==='pr'||c.k==='days')?'<td></td>':'');
-        }).join('')+'<td></td></tr>' : ''
+          var hint=(DIMF_HINT[c.k]||[])[0]||(c.type==='pct'?'8~13':(c.type==='int'?'>100':'30~70'));
+          var td='<td>'+dimFilInput(i,c.k,st,hint,DIMF_HINT[c.k]||[])+'</td>';
+          if(c.k==='rate') td+='<td>'+dimTagSel(i,'tagR',st)+'</td>';
+          if(c.k==='pr')   td+='<td>'+dimTagSel(i,'tagP',st)+'</td>';
+          if(c.k==='days') td+='<td>'+dimTagSel(i,'tagD',st)+'</td>';
+          return td;
+        }).join('')+
+        '<td>'+dimFilInput(i,'sc',st,'场景名',scNames)+'</td></tr>' : ''
       }</thead><tbody>`;
     shown.forEach((g,idx)=>{
       const m=g.m;
@@ -2751,7 +2819,7 @@ function renderDims(){
       dimState[i].f={}; renderDims();
     };
   });
-  host.querySelectorAll('input.fin').forEach(inp=>{
+  host.querySelectorAll('input.fin[data-l]').forEach(inp=>{
     inp.oninput=function(){
       const i=+inp.dataset.l, k=inp.dataset.k;
       dimState[i]=dimState[i]||{}; dimState[i].f=dimState[i].f||{};
@@ -2765,6 +2833,15 @@ function renderDims(){
       }, 320);
     };
     inp.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } };
+  });
+  host.querySelectorAll('select.fin[data-l]').forEach(sel=>{
+    sel.onchange=function(){
+      const i=+sel.dataset.l, k=sel.dataset.k;
+      dimState[i]=dimState[i]||{}; dimState[i].f=dimState[i].f||{};
+      const v=sel.value;
+      if(v) dimState[i].f[k]=v; else delete dimState[i].f[k];
+      renderDims();
+    };
   });
   host.querySelectorAll('[data-expgo]').forEach(btn=>{
     btn.onclick=()=>{
@@ -3090,7 +3167,7 @@ function renderFoot(){
   <div><b>明细与导出</b>：SKU 明细位于「04 维度下钻」末层，受全局筛选与下钻路径共同约束，导出支持「当前范围全部 / 当前页 / 精简列」；<b>每个维度层右上角也可导出</b>——「本层汇总」出该层每个分组一行的汇总表（含合计行），「本层 SKU 明细」出该层范围内的 SKU 明细。CSV 均为 UTF-8 BOM（Excel 直接打开）。点击任意行弹出该 SKU 全字段详情。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
   <div><b>异常下钻</b>：01 诊断条 / KPI / 洞察卡点击后跳到「04 维度下钻」的 SKU 末层（顶部显示定位条件，可一键清除）；<b>02 的 7 个异常 KPI、两张交叉矩阵格子点击后直接弹窗</b>，列出这批 SKU 的全字段明细（17 列与 04 SKU 明细一致），支持导出 CSV，Esc 或点遮罩关闭。</div>
-  <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
+  <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
   <div><b>数据范围</b>：仅巴西站亚马逊（BR · AMZ），已剔除多渠道与墨西哥站数据；业务组 / SKU状态 / 场景 / 搜索为全局筛选；「02 各异常点」点击只弹窗、不改变全局范围；「04 维度下钻」为逐级下钻，三者叠加生效。页面所有数字均为当前范围的实时重算结果，非静态快照。</div>`;
 }
 
