@@ -1062,6 +1062,17 @@ table.dt tr.scnkid>td:nth-child(2){padding-left:22px;color:var(--ink2)}
 .kpis.nine .kpi .k{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kpis.nine .kpi .s{font-size:10.5px;line-height:1.5}
 
+/* ---------- 01 KPI 卡：环比行（v54） ---------- */
+.kpi .kd{display:flex;align-items:center;gap:6px;margin-top:7px;padding-top:6px;
+  border-top:1px dashed #e7eef9;font-size:10.5px;line-height:1.35;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.kpi .kd .kdl{color:#9aa7bd;letter-spacing:.2px;flex:none}
+.kpi .kd .kdv{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.1px}
+.kpi .kd .kdv.up{color:#b3271f}      /* 向好＝红（沿用涨红跌绿） */
+.kpi .kd .kdv.down{color:#17794f}    /* 转差＝绿 */
+.kpi .kd .kdv.flat{color:#9aa7bd;font-weight:600}
+.kpi .kd[title]{cursor:help}
+
 </style>
 </head>
 <body>
@@ -1452,15 +1463,54 @@ const DIMDEF=[
   {f:'sku', name:'SKU'}
 ];
 
-function baseRows(){
+function filterBy(rows){
   const kw=F.kw.trim().toLowerCase();
-  return ROWS.filter(r=>
+  return rows.filter(r=>
     (F.bg==='全部'||r.bg===F.bg) &&
     (F.status==='全部'||(F.status==='淘汰'?r.elim===1:r.elim===0)) &&
     (F.scene==='全部'||r.sc===F.scene) &&
     (!kw || r.sku.toLowerCase().includes(kw) || (r.asin||'').toLowerCase().includes(kw) ||
       (r.lst||'').toLowerCase().includes(kw) || (r.c3||'').toLowerCase().includes(kw) || (r.bu||'').toLowerCase().includes(kw))
   );
+}
+function baseRows(){ return filterBy(ROWS); }
+
+/* ---------- 环比：当前版本 vs 上一数据快照（同一筛选范围） ---------- */
+let PREV_CACHE={key:null, rows:null};
+function prevVersionKey(){
+  const i=VS.order.indexOf(VKEY);
+  return i>0 ? VS.order[i-1] : null;
+}
+function prevKpi(){
+  const pk=prevVersionKey();
+  if(!pk || !VS.data[pk]) return null;
+  if(PREV_CACHE.key!==pk) PREV_CACHE={key:pk, rows:unpack(VS.data[pk])};
+  const rs=filterBy(PREV_CACHE.rows);
+  if(!rs.length) return null;
+  const d=VS.data[pk];
+  return {key:pk, wk:d.weekLabels[0]+'–'+d.weekLabels[3], m:M(agg(rs)), n:rs.length};
+}
+/* kind: pt 百分点 / pct 数量同比 / num 件数 / day 天；dir: 1 越高越好、-1 越低越好、0 中性 */
+function kpiCmp(P, t){
+  if(!P) return '<div class="kd"><span class="kdl">环比</span><span class="kdv flat">首版无对比</span></div>';
+  const lab='<span class="kdl">环比 '+P.key.slice(5)+'</span>';
+  const cur=t.cur, prev=t.prev;
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))
+    return '<div class="kd">'+lab+'<span class="kdv flat">—</span></div>';
+  let chg, txt, fv;
+  if(t.kind==='pt'){ chg=(cur-prev)*100; txt=Math.abs(chg).toFixed(1)+'pt'; fv=pct(prev,1); }
+  else if(t.kind==='pct'){
+    if(!(prev>0)) return '<div class="kd">'+lab+'<span class="kdv flat">—</span></div>';
+    chg=(cur/prev-1)*100; txt=Math.abs(chg).toFixed(1)+'%'; fv=nf(prev,0)+' '+(t.lab||'');
+  }else if(t.kind==='day'){ chg=cur-prev; txt=Math.abs(chg).toFixed(1)+' 天'; fv=nf(prev,1)+' 天'; }
+  else { chg=cur-prev; txt=nf(Math.abs(chg),0)+' '+(t.lab||''); fv=nf(prev,0)+' '+(t.lab||''); }
+  const flat=Math.abs(chg)<0.05;
+  let cls='flat';
+  if(!flat && t.dir) cls=((chg>0?1:-1)===t.dir)?'up':'down';
+  const ar=flat?'':(chg>0?'▲ ':'▼ ');
+  const body=flat?'持平':ar+txt;
+  const tt='上一快照 '+P.key+'（'+P.wk+'）：'+fv;
+  return '<div class="kd" title="'+tt+'">'+lab+'<span class="kdv '+cls+'">'+body+'</span></div>';
 }
 function rowsAt(i){
   const b=baseRows();
@@ -1960,6 +2010,7 @@ document.addEventListener('click', function(e){
 
 function renderOverview(){
   const rows=baseRows(); const m=M(agg(rows));
+  const P=prevKpi(); const pm=P?P.m:null;
   /* 异常定位谓词：与下方各数字的统计口径一一对应 */
   const underP=r=>r.f4>0 && r.q4/r.f4<0.9;
   const hitP  =r=>r.f4>0 && r.q4/r.f4>=0.9 && r.q4/r.f4<1.1;
@@ -1980,6 +2031,7 @@ function renderOverview(){
     `<span class="mtag">4周订单 <b>${nf(m.q)}</b></span>`,
     `<span class="mtag">最新版预测 <b>${nf(m.f,0)}</b></span>`,
     `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`,
+    `<span class="mtag">环比基准 <b>${P?P.key:'—'}</b>${P?'（'+P.wk+'）':'（首版）'}</span>`,
     `<span class="mtag">带<span style="border-bottom:1px dashed #9fb6e6">虚线的数字</span>可点击 → 弹窗看这批 SKU</span>`
   ].join('');
 
@@ -2007,9 +2059,21 @@ function renderOverview(){
       tone:m.days==null?'':(m.days<30?'up':(m.days>70?'warn':'')),
       drill:['压货 >70天',pileP]}
   ];
-  $('#kpis').innerHTML=k.map(x=>{
+  /* 环比对照表：与上面 9 张卡一一对应。dir=1 越高越好 / -1 越低越好 / 0 中性（仅示方向） */
+  const CMP=[
+    {cur:m.n,          prev:pm&&pm.n,          kind:'num', dir:0,      lab:'SKU'},
+    {cur:m.q,          prev:pm&&pm.q,          kind:'pct', dir:1,      lab:'件'},
+    {cur:m.rate4,      prev:pm&&pm.rate4,      kind:'pt',  dir:1},
+    {cur:m.rateL1,     prev:pm&&pm.rateL1,     kind:'pt',  dir:1},
+    {cur:m.wrateL1,    prev:pm&&pm.wrateL1,    kind:'pt',  dir:1},
+    {cur:m.wrate4,     prev:pm&&pm.wrate4,     kind:'pt',  dir:1},
+    {cur:m.pr,         prev:pm&&pm.pr,         kind:'pt',  dir:1},
+    {cur:m.adp,        prev:pm&&pm.adp,        kind:'pt',  dir:-1},
+    {cur:m.days,       prev:pm&&pm.days,       kind:'day', dir:0}
+  ];
+  $('#kpis').innerHTML=k.map((x,i)=>{
     const v=x.drill?drillNum(rows,x.drill[0],x.drill[1],x.v):x.v;
-    return `<div class="kpi${x.hl?' hl':''}${x.tone?' tone-'+x.tone:''}"><div class="k">${x.k}</div><div class="v">${v}</div><div class="s">${x.s}</div></div>`;
+    return `<div class="kpi${x.hl?' hl':''}${x.tone?' tone-'+x.tone:''}"><div class="k">${x.k}</div><div class="v">${v}</div><div class="s">${x.s}</div>${kpiCmp(P,CMP[i])}</div>`;
   }).join('');
 
   const deadN=rows.filter(r=>!(r.d7>0)&&(r.invP||0)>0).length;
@@ -3552,7 +3616,7 @@ function exportCsv(rows, tag, slim){
 /* ---------- 页脚 ---------- */
 function renderFoot(){
   $('#footNotes').innerHTML=`
-  <div><b>数据版本</b>：当前 ${DB.version}（${DB.weekLabels[0]}–${DB.weekLabels[3]}）｜共 ${VS.order.length} 个版本，切换在页面右上角；切版本会清空筛选与下钻，其余交互不变。</div>
+  <div><b>数据版本</b>：当前 ${DB.version}（${DB.weekLabels[0]}–${DB.weekLabels[3]}）｜共 ${VS.order.length} 个版本，切换在页面右上角；切版本会清空筛选与下钻，其余交互不变。<b>01 概况每张 KPI 卡下方的「环比」＝当前版本 vs 上一版快照</b>（同筛选范围、同口径重算）：达成率 / 利润率 / 广告费比用<b>百分点（pt）</b>，订单用<b>同比 %</b>，可售天数用<b>天</b>；红＝向好、绿＝转差、灰＝中性或首版无对比。<b>注意</b>：4 周为滚动窗口，相邻两版窗口整体后移一周（如 ${VS.order.length>=2?VS.data[VS.order[VS.order.length-2]].weekLabels[0]+'–'+VS.data[VS.order[VS.order.length-2]].weekLabels[3]:''} → ${DB.weekLabels[0]}–${DB.weekLabels[3]}），环比里同时含「新一周进入 / 旧一周退出」的影响，不等于同一批周的自然增长。</div>
   <div><b>数据源</b>：${DB.source}｜明细表（${nf(ROWS.length)} 行，一个 SKU 一行）｜周期 ${DB.weeks[0]} ~ ${DB.weeks[3]}（4 周）</div>
   <div><b>四组达成率</b>（01 KPI 卡、04 维度四层、03 场景表、SKU 明细同一口径）：<b>4周累计·最新版</b>＝Σ4周订单 ÷ Σ4周最新版预测（＝明细表 BS 列）；<b>最新周·最新版</b>＝最新周（${DB.weekLabels[3]}）订单 ÷ 当周最新版预测（BW 列）；<b>最新周·加权</b>＝最新周订单 ÷ 当周加权预测（CM 列）；<b>4周累计·加权</b>＝Σ4周订单 ÷ Σ4周加权预测（CI 列）。SKU 级直接取明细表原生列；BU / 销售负责人 / 三级分类 / 国家Listing 与 03 场景则用「预测达成」表逐周数值分别求和后相除，<b>不对明细表百分比做平均</b>。分母为 0 的 SKU（无预测）其订单仍计入分子。</div>
   <div><b>毛利率 / 广告费比 / 仓储费比 / ACOS</b>：四个指标全部由<b>金额和比</b>得出，绝不对比率求平均。<b>毛利率</b>＝Σ业务毛利 ÷ Σ收入总额(审计)；<b>广告费比</b>＝Σ产品营销费 ÷ Σ收入总额(审计)；<b>仓储费比</b>＝Σ自发仓储费 ÷ Σ收入总额(审计)——三者取「毛利监控」表（国家=BR、渠道=AMZ、周期 ${DB.weekLabels[0]}–${DB.weekLabels[3]}）按 最早SKU 汇总；<b>ACOS</b>＝ΣSPEND$ ÷ ΣTotal ads Sales$，取「广告报表」表同条件汇总。SKU 级同样用金额相除（与毛利监控 L 列「业务毛利率」同源可校验），BU / 负责人 / 分类 / Listing 与 03 场景均为组内金额相加后再相除。</div>
