@@ -1089,6 +1089,52 @@ td.lwt .lwc[title]{cursor:help}
 .kpis.twelve .kpi .v{font-size:19px}
 .kpis.twelve .kpi .s{font-size:10.5px;line-height:1.45}
 
+/* ---------- 01 概况：量/利/库 三张组合卡（v56） ---------- */
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:14px 16px 8px}
+@media (max-width:1100px){.g3{grid-template-columns:1fr}}
+.gcard{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;
+  padding:12px 15px 11px;display:flex;flex-direction:column;gap:9px}
+.gcard::before{content:'';position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:#dde5f1}
+.gcard.gq::before{background:#2f5bd7}
+.gcard.gp::before{background:#b3271f}
+.gcard.gi2::before{background:#ba7517}
+.gcard .gh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gcard .gt{font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.2px}
+.gcard .gx{font-size:10.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
+.gcard .gx.up{color:#b3271f}
+.gcard .gx.down{color:#17794f}
+.gcard .gm{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.gcard .gl{font-size:11px;color:var(--muted)}
+.gcard .gn{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.1}
+.gcard .gm i,.gcard .gi i{font-style:normal;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.gcard i.up{color:#b3271f} .gcard i.down{color:#17794f} .gcard i.flat{color:#9aa7bd}
+.gcard .gs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+  padding-top:9px;border-top:1px dashed #e7eef9}
+.gcard .gs.five{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.gcard .gi{display:flex;flex-direction:column;gap:1px;min-width:0}
+.gcard .gi span{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcard .gi b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.gcard .gf{font-size:10.5px;color:#7d8aa2;line-height:1.5;padding-top:8px;border-top:1px dashed #eef3fa}
+@media (max-width:1100px){.gcard .gs.five{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* 洞察折叠条 */
+.insbar{display:flex;align-items:center;gap:10px;margin:0 16px;padding:7px 12px;
+  border:1px solid var(--line);border-radius:10px;background:#fbfcfe;font-size:11.5px;color:var(--muted)}
+.insbar .ibt{font-weight:700;color:var(--ink2)}
+.insbar .ibs b{color:var(--ink);font-weight:700}
+.insbar .ibk{margin-left:auto;color:#2f5bd7;font-weight:600;cursor:pointer;white-space:nowrap}
+.insbar .ibk:hover{text-decoration:underline}
+.insights[data-collapsed="1"]{display:none}
+
+/* ---------- 04 维度层：列分组开关（v56） ---------- */
+.cgseg{display:inline-flex;align-items:center;border:1px solid #dbe4f4;border-radius:7px;overflow:hidden;background:#fff}
+.cgseg b{font-size:11px;font-weight:600;color:#6b7c96;padding:3px 8px;cursor:pointer;
+  border-right:1px solid #eef2f9;transition:.12s;white-space:nowrap}
+.cgseg b:last-child{border-right:0}
+.cgseg b:hover{background:#f4f8ff;color:#2f5bd7}
+.cgseg b.on{background:#eaf0fe;color:#1f4bc4;font-weight:700}
+@media (max-width:1200px){.cgseg b{padding:3px 6px;font-size:10.5px}}
+
 </style>
 </head>
 <body>
@@ -1141,9 +1187,10 @@ td.lwt .lwc[title]{cursor:help}
           <div class="bmeta" id="s1meta"></div>
         </div>
         <div class="diagbar" id="diagBar"></div>
-        <div class="kpis nine twelve" id="kpis"></div>
+        <div class="g3" id="kpis"></div>
         <div class="warnline" id="kpiWarn"></div>
-        <div class="insights" id="insights"></div>
+        <div class="insbar" id="insBar"><span class="ibt">洞察</span><span class="ibs" id="insSum"></span><span class="ibk" id="insBtn">展开 4 条</span></div>
+        <div class="insights" id="insights" data-collapsed="1"></div>
         <div class="subhead"><span>业务组表现 <b>当前筛选范围</b></span></div>
         <div class="sites-grid" id="siteCards"></div>
         <div class="subhead noline"><span>周度趋势 <b id="wkRange">W39–W42</b></span><i class="sp"></i>
@@ -2141,10 +2188,60 @@ function renderOverview(){
     {cur:m.lwWh,       prev:m.pwWh,            kind:'week', dir:-1},
     {cur:m.days,       prev:pm&&pm.days,       kind:'day', dir:0}
   ];
-  $('#kpis').innerHTML=k.map((x,i)=>{
-    const v=x.drill?drillNum(rows,x.drill[0],x.drill[1],x.v):x.v;
-    return `<div class="kpi${x.hl?' hl':''}${x.tone?' tone-'+x.tone:''}"><div class="k">${x.k}</div><div class="v">${v}</div><div class="s">${x.s}</div>${kpiCmp(P,CMP[i])}</div>`;
-  }).join('');
+  /* v56：按「量 / 利 / 库」归并成 3 张组合卡，12 个数字全部保留且仍可点开弹窗 */
+  const gv=i=>k[i].drill?drillNum(rows,k[i].drill[0],k[i].drill[1],k[i].v):k[i].v;
+  const gd=i=>miniD(P,CMP[i]);
+  const wkL=DB.weekLabels[3], wkP=DB.weekLabels[2];
+  /* 三张卡底部的结论：全部由当前数据拼出，不写死文案 */
+  const qFoot = (m.rateL1!=null&&m.rate4!=null)
+    ? (m.rateL1>m.rate4+0.03 ? `单周（${wkL}）冲到 ${pct(m.rateL1)}，累计仍只有 ${pct(m.rate4)} —— 冲量集中在新周`
+      : m.rateL1<m.rate4-0.03 ? `单周 ${pct(m.rateL1)} 落后累计 ${pct(m.rate4)} —— 最近一周在掉队`
+      : `单周与累计基本同步（${pct(m.rateL1)} vs ${pct(m.rate4)}）`)
+    : '单周达成暂无可比数据';
+  const pFoot = (m.lwPr==null) ? '本周毛利率暂无数据'
+    : (m.lwPr<0 ? `毛利率仍为负，距 8% 临界线差 ${nf((0.08-m.lwPr)*100,1)}pt`
+      : m.lwPr<0.08 ? `已转正，距 8% 临界线还差 ${nf((0.08-m.lwPr)*100,1)}pt`
+      : m.lwPr<0.13 ? `已过 8% 临界线，距 13% 目标差 ${nf((0.13-m.lwPr)*100,1)}pt`
+      : `已超过 13% 目标 ${nf((m.lwPr-0.13)*100,1)}pt`);
+  const iFoot = m.days==null ? '可售天数暂无数据'
+    : (m.days>70 ? `${nf(m.days,1)} 天，仍在压货区` : m.days<30 ? `${nf(m.days,1)} 天，已进入紧张区` : `${nf(m.days,1)} 天，处于 30–70 正常区间`);
+  const gapTag = m.gapW==null?'':((m.gapW<0?'缺口 ':'超达 ')+nf(Math.abs(m.gapW),0)+' 件/周');
+  const prTag = (m.lwPr!=null&&m.pr!=null)?('较 4 周平均 '+(m.lwPr>=m.pr?'+':'−')+nf(Math.abs((m.lwPr-m.pr)*100),1)+'pt'):'';
+  const daysTag = (m.days!=null&&pm&&pm.days!=null)
+    ? ('较上一版 '+(m.days<=pm.days?'▼ ':'▲ ')+nf(Math.abs(m.days-pm.days),1)+' 天') : '';
+  $('#kpis').innerHTML=`
+    <div class="gcard gq">
+      <div class="gh"><span class="gt">量 · 达成</span><span class="gx ${m.gapW<0?'down':'up'}">${gapTag}</span></div>
+      <div class="gm"><span class="gl">4周订单</span><span class="gn">${gv(1)}</span>${gd(1)}</div>
+      <div class="gs">
+        <div class="gi"><span>4周达成</span><b>${gv(2)}</b>${gd(2)}</div>
+        <div class="gi"><span>最新周</span><b>${gv(3)}</b>${gd(3)}</div>
+        <div class="gi"><span>加权</span><b>${gv(5)}</b>${gd(5)}</div>
+      </div>
+      <div class="gf">${qFoot}</div>
+    </div>
+    <div class="gcard gp">
+      <div class="gh"><span class="gt">利 · 毛利与费用</span><span class="gx ${(m.lwPr!=null&&m.pr!=null&&m.lwPr>=m.pr)?'up':'down'}">${prTag}</span></div>
+      <div class="gm"><span class="gl">最新周利润率（${wkL}）</span><span class="gn">${gv(6)}</span>${gd(6)}</div>
+      <div class="gs five">
+        <div class="gi"><span>4周毛利</span><b>${gv(7)}</b>${gd(7)}</div>
+        <div class="gi"><span>广告 ${wkL}</span><b>${gv(8)}</b>${gd(8)}</div>
+        <div class="gi"><span>广告 4周</span><b>${gv(9)}</b>${gd(9)}</div>
+        <div class="gi"><span>仓储 ${wkL}</span><b>${gv(10)}</b>${gd(10)}</div>
+        <div class="gi"><span>仓储 4周</span><b>${pct(m.whp)}</b>${miniD(P,{cur:m.whp,prev:pm&&pm.whp,kind:'pt',dir:-1})}</div>
+      </div>
+      <div class="gf">${pFoot}</div>
+    </div>
+    <div class="gcard gi2">
+      <div class="gh"><span class="gt">库 · 周转</span><span class="gx">${m.aliveDays==null?'':'动销口径 '+nf(m.aliveDays,0)+' 天'}</span></div>
+      <div class="gm"><span class="gl">平台仓可售天数</span><span class="gn">${gv(11)}</span>${gd(11)}</div>
+      <div class="gs">
+        <div class="gi"><span>压货 &gt;70天</span><b>${drillNum(rows,'压货 >70天',pileP,nf(m.pile))}</b></div>
+        <div class="gi"><span>断货 ≤0</span><b>${drillNum(rows,'断货 平台仓≤0',oosP,nf(m.oos))}</b></div>
+        <div class="gi"><span>平台仓库存</span><b>${wan(m.invP)}</b></div>
+      </div>
+      <div class="gf">${iFoot}</div>
+    </div>`;
 
   const deadN=rows.filter(r=>!(r.d7>0)&&(r.invP||0)>0).length;
 
@@ -2222,6 +2319,19 @@ function renderOverview(){
     ],cls:(m.adp!=null&&m.adp>tgt)?'warn':''}
   ];
   $('#insights').innerHTML=ins.map(c=>`<div class="icard ${c.cls}"><div class="ih">${c.h}</div>${c.lines.map(l=>`<div class="il">${l}</div>`).join('')}</div>`).join('');
+  /* v56：洞察默认收起，摘要行给一条最关键的信息 */
+  (function(){
+    const sum=$('#insSum'), btn=$('#insBtn'), box=$('#insights');
+    if(!sum||!btn||!box) return;
+    const warnN=ins.filter(c=>c.cls==='warn').length;
+    sum.innerHTML=`${ins.length} 条 · 其中 <b>${warnN}</b> 条需关注`+(worst?` · 缺口最大 <b>${worst.k}</b> ${nf(worst.gap,1)} 件/周`:'');
+    const setOpen=function(open){
+      box.dataset.collapsed=open?'0':'1';
+      btn.textContent=open?'收起 ▴':'展开 '+ins.length+' 条';
+    };
+    setOpen(false);
+    btn.onclick=function(){ setOpen(box.dataset.collapsed==='1'); };
+  })();
 
   const BG_COLOR={'拉美家具桌椅组':'#2f8fd7','拉美收纳宠户组':'#159b66'};
   const bgs=DB.cat.bg.map(g=>({g,rows:rows.filter(r=>r.bg===g)})).filter(x=>x.rows.length);
@@ -2350,32 +2460,39 @@ function renderTrend(m){
 const SCN={dim:'', mode:'nest', exp:{}, page:1, size:100};
 const SCN_DIMS=[['','不拆分'],['bu','BU'],['own','销售负责人'],['lst','国家Listing'],['sku','SKU']];
 const SCN_COLS=[
-  {k:'n',     t:'SKU数'},
-  {k:'np',    t:'SKU占比'},
-  {k:'q',     t:'4周订单'},
-  {k:'qp',    t:'订单占比'},
-  {k:'f',     t:'4周预测'},
-  {k:'rate',  t:'4周累计达成·最新版'},
-  {k:'tagR',  t:'预测打标'},
-  {k:'rateL1',t:'最新周达成·最新版'},
-  {k:'wrateL1',t:'最新周达成·加权'},
-  {k:'wrate4',t:'4周累计达成·加权'},
-  {k:'gap',   t:'周均缺口'},
-  {k:'lwPr',  t:'最新周利润率'},
-  {k:'pr',    t:'4周利润率'},
-  {k:'tagP',  t:'利润率打标'},
-  {k:'lwAd',  t:'最新周广告占比'},
-  {k:'adp',   t:'4周广告费比'},
-  {k:'lwWh',  t:'最新周仓储费比'},
-  {k:'whp',   t:'4周仓储费比'},
-  {k:'acos',  t:'Acos'},
-  {k:'invp',  t:'总库存占比'},
-  {k:'invP',  t:'平台仓库存'},
-  {k:'invS',  t:'自发仓库存'},
-  {k:'days',  t:'平台仓可售天数'},
-  {k:'tagD',  t:'可售天数打标'}
+  {k:'n',     t:'SKU数',     g:'scale'},
+  {k:'np',    t:'SKU占比',   g:'scale'},
+  {k:'q',     t:'4周订单',   g:'scale'},
+  {k:'qp',    t:'订单占比',  g:'scale'},
+  {k:'f',     t:'4周预测',   g:'scale'},
+  {k:'rate',  t:'4周累计达成·最新版', g:'rate'},
+  {k:'tagR',  t:'预测打标', g:'rate'},
+  {k:'rateL1',t:'最新周达成·最新版', g:'rate'},
+  {k:'wrateL1',t:'最新周达成·加权', g:'rate'},
+  {k:'wrate4',t:'4周累计达成·加权', g:'rate'},
+  {k:'gap',   t:'周均缺口', g:'rate'},
+  {k:'lwPr',  t:'最新周利润率', g:'profit'},
+  {k:'pr',    t:'4周利润率', g:'profit'},
+  {k:'tagP',  t:'利润率打标', g:'profit'},
+  {k:'lwAd',  t:'最新周广告占比', g:'profit'},
+  {k:'adp',   t:'4周广告费比', g:'profit'},
+  {k:'lwWh',  t:'最新周仓储费比', g:'profit'},
+  {k:'whp',   t:'4周仓储费比', g:'profit'},
+  {k:'acos',  t:'Acos', g:'profit'},
+  {k:'invp',  t:'总库存占比', g:'inv'},
+  {k:'invP',  t:'平台仓库存', g:'inv'},
+  {k:'invS',  t:'自发仓库存', g:'inv'},
+  {k:'days',  t:'平台仓可售天数', g:'inv'},
+  {k:'tagD',  t:'可售天数打标', g:'inv'}
 ];
 
+const SCNCG={g:'all'};
+function scnCols(){
+  const g=SCNCG.g;
+  if(g==='all') return SCN_COLS;
+  const want=g.split('+');
+  return SCN_COLS.filter(function(c){ return !c.g || c.g==='dim' || want.indexOf(c.g)>=0; });
+}
 function scnCell(c,m,ctx,D){
   switch(c.k){
     case 'n':      return '<td>'+D(nf(m.n))+'</td>';
@@ -2482,7 +2599,26 @@ function renderScene(){
         '<option value="nest"'+(SCN.mode==='nest'?' selected':'')+'>嵌套（场景下展开）</option>'+
         '<option value="flat"'+(SCN.mode==='flat'?' selected':'')+'>扁平（组合行 + 小计）</option></select>'+
         '<span class="scnbtn" id="scnExpAll">'+(SCN.mode==='nest'?(Object.keys(SCN.exp).length?'全部收起':'全部展开'):'')+'</span>':'')+
+      '<span class="cgseg" id="scnCg">'+['all','scale','rate','profit','inv'].map(function(g){
+        const on=(g==='all')?(SCNCG.g==='all'):(SCNCG.g!=='all'&&SCNCG.g.split('+').indexOf(g)>=0);
+        const nm={all:'全部',scale:'规模',rate:'达成',profit:'利润',inv:'库存'}[g];
+        return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
+      }).join('')+'</span>'+
       '<span class="scnbtn" id="scnExp">导出 CSV</span>';
+    ctl.querySelectorAll('#scnCg [data-cgv]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        const v=b.dataset.cgv;
+        if(v==='all'){ SCNCG.g='all'; }
+        else{
+          let cur=(SCNCG.g==='all')?[]:SCNCG.g.split('+');
+          if(cur.indexOf(v)>=0) cur=cur.filter(function(x){ return x!==v; });
+          else cur.push(v);
+          SCNCG.g=cur.length?cur.join('+'):'all';
+        }
+        renderScene();
+      };
+    });
   }
 
   if(!base.length){
@@ -2492,10 +2628,10 @@ function renderScene(){
   }
 
   let head='<th class="l">场景（最新）</th>'+(dim?'<th class="l">'+dimName+'</th>':'')+
-    SCN_COLS.map(function(c){ return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
+    scnCols().map(function(c){ return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
 
   let body='';
-  const colCnt=1+(dim?1:0)+SCN_COLS.length;
+  const colCnt=1+(dim?1:0)+scnCols().length;
   const allD=(inner)=>drillNum(rows,'全部场景',function(){return true;},inner);
 
   function sceneRow(g){
@@ -2507,7 +2643,7 @@ function renderScene(){
       '<td class="l nm">'+caret+'<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:'+scColor(g.k)+';margin-right:7px"></span>'+g.k+
       (dim?'<span class="scnn">'+cnt+' 个'+dimName+'</span>':'')+'</td>'+
       (dim?'<td class="l" style="color:var(--muted)">小计</td>':'');
-    SCN_COLS.forEach(function(c){ t+=scnCell(c,m,ctx,D); });
+    scnCols().forEach(function(c){ t+=scnCell(c,m,ctx,D); });
     return t+'</tr>';
   }
 
@@ -2516,7 +2652,7 @@ function renderScene(){
     let t='<tr class="scnkid" data-scene="'+scene+'" data-val="'+String(val).replace(/"/g,'&quot;')+'">'+
       (dim?'<td class="l" style="color:var(--muted)"></td><td class="l">'+val+'</td>':'');
     if(!dim) t='<tr class="scnkid" data-scene="'+scene+'">'+'<td class="l"></td>';
-    SCN_COLS.forEach(function(c){ t+=scnCell(c,g.m,ctx,D); });
+    scnCols().forEach(function(c){ t+=scnCell(c,g.m,ctx,D); });
     return t+'</tr>';
   }
 
@@ -2604,11 +2740,11 @@ function renderScene(){
   if(sm) sm.onchange=function(){ SCN.mode=sm.value; SCN.page=1; renderScene(); };
   const ex=$('#scnExp');
   if(ex) ex.onclick=function(){
-    const head=['场景（最新）'].concat(dim?[dimName]:[]).concat(SCN_COLS.map(function(c){ return c.t; }));
+    const head=['场景（最新）'].concat(dim?[dimName]:[]).concat(scnCols().map(function(c){ return c.t; }));
     const lines=[head.map(csvCell).join(',')];
     function pushRow(a,b,m){
       const row=[a]; if(dim) row.push(b);
-      SCN_COLS.forEach(function(c){ row.push(scnTxt(c.k,m,ctx)); });
+      scnCols().forEach(function(c){ row.push(scnTxt(c.k,m,ctx)); });
       lines.push(row.map(csvCell).join(','));
     }
     base.forEach(function(g){
@@ -2969,27 +3105,31 @@ function cmpBar(sc,tot){
 const dimState={};
 /* ---------- 维度层列定义：排序 / 筛选共用 ---------- */
 const DIMCOLS=[
-  {k:'n',   t:'SKU数',        type:'int'},
-  {k:'q',   t:'4周订单',      type:'int'},
-  {k:'qp',  t:'订单占比',     type:'pct'},
-  {k:'f',   t:'4周预测',      type:'num'},
-  {k:'rate',t:'4周累计达成·最新版',type:'pct'},
-  {k:'rateL1', t:'最新周达成·最新版',type:'pct'},
-  {k:'wrateL1',t:'最新周达成·加权',  type:'pct'},
-  {k:'wrate4', t:'4周累计达成·加权', type:'pct'},
-  {k:'gap', t:'周均缺口',     type:'num'},
+  {k:'n',   t:'SKU数',        type:'int', g:'scale'},
+  {k:'q',   t:'4周订单',      type:'int', g:'scale'},
+  {k:'qp',  t:'订单占比',     type:'pct', g:'scale'},
+  {k:'f',   t:'4周预测',      type:'num', g:'scale'},
+  {k:'rate',t:'4周累计达成·最新版',type:'pct', g:'rate'},
+  {k:'rateL1', t:'最新周达成·最新版',type:'pct', g:'rate'},
+  {k:'wrateL1',t:'最新周达成·加权',  type:'pct', g:'rate'},
+  {k:'wrate4', t:'4周累计达成·加权', type:'pct', g:'rate'},
+  {k:'gap', t:'周均缺口',     type:'num', g:'rate'},
   /* 三项指标成组：最新周在前，4周累计在后（v55） */
-  {k:'lwPr',t:'最新周利润率',  type:'pct'},
-  {k:'pr',  t:'4周利润率',    type:'pct'},
-  {k:'lwAd',t:'最新周广告占比',type:'pct'},
-  {k:'adp', t:'4周广告费比',  type:'pct'},
-  {k:'lwWh',t:'最新周仓储费比',type:'pct'},
-  {k:'whp', t:'4周仓储费比',  type:'pct'},
-  {k:'acos',t:'Acos',        type:'pct'},
-  {k:'invP',t:'平台仓库存',   type:'int'},
-  {k:'days',t:'平台仓可售天数',type:'num'},
-  {k:'invS',t:'自发仓库存',   type:'int'}
+  {k:'lwPr',t:'最新周利润率',  type:'pct',  g:'profit'},
+  {k:'pr',  t:'4周利润率',    type:'pct',  g:'profit'},
+  {k:'lwAd',t:'最新周广告占比',type:'pct',  g:'profit'},
+  {k:'adp', t:'4周广告费比',  type:'pct',  g:'profit'},
+  {k:'lwWh',t:'最新周仓储费比',type:'pct',  g:'profit'},
+  {k:'whp', t:'4周仓储费比',  type:'pct',  g:'profit'},
+  {k:'acos',t:'Acos',        type:'pct',  g:'profit'},
+  {k:'invP',t:'平台仓库存',   type:'int',  g:'inv'},
+  {k:'days',t:'平台仓可售天数',type:'num',  g:'inv'},
+  {k:'invS',t:'自发仓库存',   type:'int',  g:'inv'}
 ];
+/* 列分组：全部 / 规模 / 达成 / 利润 / 库存（维度列与场景构成始终显示） */
+const DIM_TAG_G={tagR:'rate', tagP:'profit', tagD:'inv'};
+const DIMCG={};
+function dimCG(i){ return DIMCG[i]||'rate+profit'; }
 /* 列顺序 / 表头 / CSV 导出的唯一来源：改这里，表头与导出一起变，不会再分叉 */
 const DIM_TAG_OF={rate:'tagR', pr:'tagP', days:'tagD'};
 const DIM_TAG_T ={tagR:'预测打标', tagP:'利润率打标', tagD:'可售天数打标'};
@@ -2999,9 +3139,9 @@ const DIM_ALLCOLS=(function(){
   DIMCOLS.forEach(function(c){
     a.push(c);
     const tk=DIM_TAG_OF[c.k];
-    if(tk) a.push({k:tk, t:DIM_TAG_T[tk], type:'tag', w:DIM_TAG_W[tk]});
+    if(tk) a.push({k:tk, t:DIM_TAG_T[tk], type:'tag', w:DIM_TAG_W[tk], g:DIM_TAG_G[tk]});
   });
-  a.push({k:'sc', t:'场景构成', type:'cmp'});
+  a.push({k:'sc', t:'场景构成', type:'cmp', g:'dim'});
   return a;
 })();
 /* 某些层要额外带出别的维度值（v52）：国家Listing 层加「三级分类 / 销售负责人」 */
@@ -3014,8 +3154,46 @@ const DIM_EXTRA={
 };
 function dimColsOf(i){
   const ex=DIM_EXTRA[i]||[];
-  if(!ex.length) return DIM_ALLCOLS;
-  return [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2));
+  const base = ex.length ? [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2)) : DIM_ALLCOLS;
+  const cg=dimCG(i);
+  if(cg==='all') return base;
+  const want=cg.split('+');
+  return base.filter(function(c){ return !c.g || c.g==='dim' || want.indexOf(c.g)>=0; });
+}
+/* 维度层单元格：表体 / 合计 / 导出共用一处，避免手写 td 与列定义错位 */
+function dimCell(c, m, ctx){
+  switch(c.k){
+    case '_rk':   return '<td class="rk">'+(ctx.rank||'')+'</td>';
+    case '_name': return '<td class="l nm" title="'+String(ctx.name||'').replace(/"/g,'&quot;')+'">'+ctx.name+'</td>';
+    case 'c3x': case 'ownx': {
+      const t=dimTopTxt(m, c.k==='c3x'?'c3c':'ownc');
+      return '<td class="l" title="'+t.all.replace(/"/g,'&quot;')+'">'+t.txt+'</td>';
+    }
+    case 'n':     return '<td>'+nf(m.n)+'</td>';
+    case 'q':     return '<td><b>'+nf(m.q)+'</b></td>';
+    case 'qp':    return '<td>'+pct(ctx.all&&ctx.all.q?m.q/ctx.all.q:null)+'</td>';
+    case 'f':     return '<td>'+nf(m.f,0)+'</td>';
+    case 'rate':  return '<td>'+rateChip(m.rate,1)+'</td>';
+    case 'tagR':  return '<td class="l">'+tagChip(tagR(m.rate))+'</td>';
+    case 'rateL1':return '<td>'+rateChip(m.rateL1,1)+'</td>';
+    case 'wrateL1':return '<td>'+rateChip(m.wrateL1,1)+'</td>';
+    case 'wrate4':return '<td>'+rateChip(m.wrate4,1)+'</td>';
+    case 'gap':   return '<td style="color:'+gapColor(m.gapW)+'">'+nf(m.gapW,1)+'</td>';
+    case 'lwPr':  return lwCell(m.lwPr,m.pwPr,1);
+    case 'pr':    return '<td>'+prChip(m.pr)+'</td>';
+    case 'tagP':  return '<td class="l">'+tagChip(tagP(m.pr))+'</td>';
+    case 'lwAd':  return lwCell(m.lwAd,m.pwAd,-1);
+    case 'adp':   return '<td>'+pct(m.adp)+'</td>';
+    case 'lwWh':  return lwCell(m.lwWh,m.pwWh,-1);
+    case 'whp':   return '<td>'+pct(m.whp)+'</td>';
+    case 'acos':  return '<td>'+pct(m.acos)+'</td>';
+    case 'invP':  return '<td>'+nf(m.invP)+'</td>';
+    case 'days':  return '<td>'+dayChip(m.days)+'</td>';
+    case 'tagD':  return '<td class="l">'+tagChip(tagD(m.days,m.invP))+'</td>';
+    case 'invS':  return '<td>'+nf(m.invS)+'</td>';
+    case 'sc':    return '<td class="l">'+cmpBar(m.sc,m.n||1)+'</td>';
+    default:      return '<td>—</td>';
+  }
 }
 /* 组内某个维度取值：按出现次数排序，多于一个时显示「主值 等N项」 */
 function dimTopTxt(m,key){
@@ -3106,6 +3284,23 @@ function dimVal(k,m,totQ){
     case 'invS': return m.invS;
     default:     return null;
   }
+}
+/* 组合卡内联环比：只给箭头 + 数值，基准写在 title 里 */
+function miniD(P, t){
+  if(!t) return '';
+  const cur=t.cur, prev=t.prev;
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev)) return '<i class="flat">—</i>';
+  let chg, txt;
+  if(t.kind==='pt'||t.kind==='week'){ chg=(cur-prev)*100; txt=Math.abs(chg).toFixed(1)+'pt'; }
+  else if(t.kind==='day'){ chg=cur-prev; txt=Math.abs(chg).toFixed(1)+' 天'; }
+  else if(t.kind==='pct'){ if(!(prev>0)) return '<i class="flat">—</i>'; chg=(cur/prev-1)*100; txt=Math.abs(chg).toFixed(1)+'%'; }
+  else { chg=cur-prev; txt=nf(Math.abs(chg),0); }
+  const flat=Math.abs(chg)<0.05;
+  let cls='flat';
+  if(!flat && t.dir) cls=((chg>0?1:-1)===t.dir)?'up':'down';
+  const base = t.kind==='week' ? ('上一周 '+DB.weekLabels[2]) : ('上一版 '+(P?P.key:''));
+  const body = flat?'持平':(chg>0?'▲ ':'▼ ')+txt;
+  return '<i class="'+cls+'" title="对比'+base+'">'+body+'</i>';
 }
 /* 最新周指标单元格：主值 + 与上一周比的百分点小字
    dir=1 越高越好（利润率）｜dir=-1 越低越好（广告 / 仓储费比）｜0 中性 */
@@ -3224,6 +3419,11 @@ function renderDims(){
       <span class="scope">范围：${scopeText(i)}</span>
       <span class="hint">${i<DIMDEF.length-1?'点击行下钻 →':'点击行查看详情'}</span>
       <button class="fbtn${fOn?' on':''}${fKeys.length?' has':''}" data-fbtn="${i}" title="展开列筛选：数值列支持 &gt;100、&lt;0、8~13；文本列包含匹配；打标列选档位">筛选${fKeys.length?' '+fKeys.length:''}</button>
+      <span class="cgseg" data-cgseg="${i}" title="按用途只显示相关列；导出跟随当前选择">${['all','scale','rate','profit','inv'].map(function(g){
+        const on=(g==='all')?(dimCG(i)==='all'):(dimCG(i)!=='all'&&dimCG(i).split('+').indexOf(g)>=0);
+        const nm={all:'全部',scale:'规模',rate:'达成',profit:'利润',inv:'库存'}[g];
+        return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
+      }).join('')}</span>
       <span class="dimexp">
         <select class="sksel" data-expsel="${i}" title="选择导出内容">
           <option value="sum">本层汇总 · 当前筛选（${groups.length} 组）</option>
@@ -3264,33 +3464,24 @@ function renderDims(){
         }).join('')+'</tr>' : '')+
       '</thead><tbody>';
     /* 表头列数必须与列定义一致，否则列错位（改列时第一时间暴露） */
-    if(cols.length!==25+exCols.length) console.warn('维度列数变了：', cols.length);
+    if(dimCG(i)==='all' && cols.length!==25+exCols.length) console.warn('维度列数变了：', cols.length);
     shown.forEach((g,idx)=>{
       const m=g.m;
-      h+=`<tr data-i="${i}" data-v="${String(g.k).replace(/"/g,'&quot;').replace(/</g,'&lt;')}">
-        <td class="rk">${idx+1}</td><td class="l nm" title="${String(g.k).replace(/"/g,'&quot;')}">${g.k}</td>${exCell(m)}
-        <td>${nf(m.n)}</td><td><b>${nf(m.q)}</b></td><td>${pct(all.q?m.q/all.q:null)}</td>
-        <td>${nf(m.f,0)}</td><td>${rateChip(m.rate,1)}</td><td class="l">${tagChip(tagR(m.rate))}</td>
-        <td>${rateChip(m.rateL1,1)}</td><td>${rateChip(m.wrateL1,1)}</td><td>${rateChip(m.wrate4,1)}</td>
-        <td style="color:${gapColor(m.gapW)}">${nf(m.gapW,1)}</td>
-        ${lwCell(m.lwPr,m.pwPr,1)}<td>${prChip(m.pr)}</td><td class="l">${tagChip(tagP(m.pr))}</td>
-        ${lwCell(m.lwAd,m.pwAd,-1)}<td>${pct(m.adp)}</td>
-        ${lwCell(m.lwWh,m.pwWh,-1)}<td>${pct(m.whp)}</td><td>${pct(m.acos)}</td>
-        <td>${nf(m.invP)}</td><td>${dayChip(m.days)}</td><td class="l">${tagChip(tagD(m.days,m.invP))}</td><td>${nf(m.invS)}</td>
-        <td class="l">${cmpBar(m.sc,m.n||1)}</td></tr>`;
+      const ctx={i:i, rank:idx+1, name:String(g.k), all:all};
+      h+='<tr data-i="'+i+'" data-v="'+String(g.k).replace(/"/g,'&quot;').replace(/</g,'&lt;')+'">'+
+        cols.map(function(c){ return dimCell(c,m,ctx); }).join('')+'</tr>';
     });
     const sumRows=scopeRows;
     dimRows[i]=sumRows;   /* 本层导出跟随筛选结果 */
     dimGroups[i]=groups;  /* 本层汇总导出：顺序与筛选都跟随当前视图 */
     const sm=M(agg(sumRows));
-    h+=`</tbody><tfoot><tr><td class="l"></td><td class="l">合计 / 加权${fKeys.length?'（已筛选）':''}</td>${exBlank}<td>${nf(sm.n)}</td>
-      <td>${nf(sm.q)}</td><td>${all.q?pct(sm.q/all.q):'—'}</td><td>${nf(sm.f,0)}</td><td>${rateChip(sm.rate,1)}</td><td class="l">${tagChip(tagR(sm.rate))}</td>
-      <td>${rateChip(sm.rateL1,1)}</td><td>${rateChip(sm.wrateL1,1)}</td><td>${rateChip(sm.wrate4,1)}</td>
-      <td style="color:${gapColor(sm.gapW)}">${nf(sm.gapW,1)}</td>
-      ${lwCell(sm.lwPr,sm.pwPr,1)}<td>${pct(sm.pr)}</td><td class="l">${tagChip(tagP(sm.pr))}</td>
-      ${lwCell(sm.lwAd,sm.pwAd,-1)}<td>${pct(sm.adp)}</td>
-      ${lwCell(sm.lwWh,sm.pwWh,-1)}<td>${pct(sm.whp)}</td><td>${pct(sm.acos)}</td>
-      <td>${nf(sm.invP)}</td><td>${dayChip(sm.days)}</td><td class="l">${tagChip(tagD(sm.days,sm.invP))}</td><td>${nf(sm.invS)}</td><td class="l"></td></tr></tfoot></table></div>`;
+    const fctx={i:i, rank:'', name:'合计 / 加权'+(fKeys.length?'（已筛选）':''), all:all};
+    h+='</tbody><tfoot><tr>'+cols.map(function(c){
+      if(c.k==='_rk') return '<td class="l"></td>';
+      if(c.k==='_name') return '<td class="l">'+fctx.name+'</td>';
+      if(c.k==='sc'||c.k==='c3x'||c.k==='ownx') return '<td class="l"></td>';
+      return dimCell(c, sm, fctx);
+    }).join('')+'</tr></tfoot></table></div>';
     if(!groups.length) h+='<div class="empty">没有符合筛选条件的分组 —— <span class="fclear" data-fclear="'+i+'" style="color:var(--accent);cursor:pointer">清除筛选</span></div>';
     if(groups.length>shown.length) h+=`<div class="more-row"><button data-more="${i}">展开其余 ${groups.length-shown.length} 项</button></div>`;
     else if(st.expand && groups.length>limit) h+=`<div class="more-row"><button data-more="${i}">收起</button></div>`;
@@ -3308,6 +3499,22 @@ function renderDims(){
   });
   /* 只绑定维度层表头；SKU 层表头带 data-k 无 data-i，由 renderSkuTable 自己管 */
   applyColTips(host, TIP_DIM);
+  host.querySelectorAll('[data-cgseg]').forEach(function(seg){
+    seg.querySelectorAll('[data-cgv]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        const i=+seg.dataset.cgseg, v=b.dataset.cgv;
+        if(v==='all'){ DIMCG[i]='all'; }
+        else{
+          let cur=(dimCG(i)==='all')?[]:dimCG(i).split('+');
+          if(cur.indexOf(v)>=0) cur=cur.filter(function(x){ return x!==v; });
+          else cur.push(v);
+          DIMCG[i]=cur.length?cur.join('+'):'all';
+        }
+        renderDims();
+      };
+    });
+  });
   host.querySelectorAll('th.sortable[data-i]').forEach(th=>{
     th.onclick=()=>{
       const i=+th.dataset.i, k=th.dataset.k;
@@ -3742,6 +3949,8 @@ function renderFoot(){
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
   <div><b>异常下钻</b>：<b>01 诊断条 / KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
+  <div><b>01 概况的三张卡</b>：<b>量 / 利 / 库</b> 按主题归并，卡内每个数字都可点开弹窗；主指标下方是<b>环比</b>（量、库与上一版快照比，利的三项与上周比，见卡内小字 title）。四张洞察卡默认收起，摘要行给「需关注条数 + 缺口最大 BU」，点「展开」看全部。</div>
+  <div><b>表格列分组</b>（03 场景表、04 维度层）：工具条上的 <b>全部 / 规模 / 达成 / 利润 / 库存</b> 可多选，只显示对应列，<b>导出跟随当前选择</b>；04 默认「达成 + 利润」（17 列），要看订单量点「规模」、要看库存点「库存」。</div>
   <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
   <div><b>数据范围</b>：仅巴西站亚马逊（BR · AMZ），已剔除多渠道与墨西哥站数据；业务组 / SKU状态 / 场景 / 搜索为全局筛选；「02 各异常点」点击只弹窗、不改变全局范围；「04 维度下钻」为逐级下钻，三者叠加生效。页面所有数字均为当前范围的实时重算结果，非静态快照。</div>`;
 }
