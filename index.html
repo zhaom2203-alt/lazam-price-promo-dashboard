@@ -2074,6 +2074,7 @@ function setVersion(k){
   F.bg='全部'; F.status='全部'; F.scene='全部'; F.kw=''; F.path=[];
   Object.keys(dimState).forEach(x=>{ delete dimState[x]; });
   SKU_ST.page=1; SKU_ST.sort='q4'; SKU_ST.dir=-1; SKU_ST.fs=false; SKU_ST.f={};
+  SD.sel=null; SD.page=1; SD.exp=false;   /* v79：换版本后旧收窄可能指向不存在的组合 */
   AF=[]; ANO_FOCUS=null;
   try{ closeSkuList(); }catch(e){}
   const pop=$('#skuPop'); if(pop){ pop.hidden=true; pop.innerHTML=''; }
@@ -3437,6 +3438,22 @@ function sdTint(hex,a){
   return 'rgba('+r+','+g+','+b+','+al.toFixed(2)+')';
 }
 function sdDimName(dim){ return (SD_DIMS.filter(function(x){ return x[0]===dim; })[0]||['',''])[1]; }
+/* 交叉表排序：渲染与 CSV 导出共用，保证导出顺序与屏幕一致（v79） */
+function sdSortList(list, ctx){
+  const key=SD.sort, dir=SD.dir;
+  return list.slice().sort(function(a,b){
+    let x,y;
+    if(key==='v'){ x=a.v; y=b.v; }
+    else if(key==='sc'){ x=SC_ORDER.indexOf(a.sc); y=SC_ORDER.indexOf(b.sc); }
+    else { x=sdVal(a.m,key,ctx); y=sdVal(b.m,key,ctx); }
+    const xv=(x==null||x!==x), yv=(y==null||y!==y);
+    if(xv&&yv) return 0;
+    if(xv) return 1;
+    if(yv) return -1;
+    if(typeof x==='string') return String(x).localeCompare(String(y))*dir;
+    return (x-y)*dir;
+  });
+}
 function sdVal(m,k,ctx){
   if(k==='np')   return ctx.totN?m.n/ctx.totN:null;
   if(k==='qp')   return ctx.totQ?m.q/ctx.totQ:null;
@@ -3603,19 +3620,7 @@ function renderSceneDim(){
       return (!SD.sel.v||c.v===SD.sel.v)&&(!SD.sel.sc||c.sc===SD.sel.sc);
     });
   }
-  const key=SD.sort, dir=SD.dir;
-  list=list.slice().sort(function(a,b){
-    let x,y;
-    if(key==='v'){ x=a.v; y=b.v; }
-    else if(key==='sc'){ x=SC_ORDER.indexOf(a.sc); y=SC_ORDER.indexOf(b.sc); }
-    else { x=sdVal(a.m,key,ctx); y=sdVal(b.m,key,ctx); }
-    const xv=(x==null||x!==x), yv=(y==null||y!==y);
-    if(xv&&yv) return 0;
-    if(xv) return 1;
-    if(yv) return -1;
-    if(typeof x==='string') return String(x).localeCompare(String(y))*dir;
-    return (x-y)*dir;
-  });
+  list=sdSortList(list, ctx);
 
   const cols=sdCols();
   const total=list.length;
@@ -3706,7 +3711,11 @@ function exportSceneDim(){
       return (!SD.sel.v||c.v===SD.sel.v)&&(!SD.sel.sc||c.sc===SD.sel.sc);
     });
   }
-  if(!list.length) return;
+  if(!list.length){
+    alert('当前收窄条件下没有可导出的组合，请先取消筛选或切换维度。');
+    return;
+  }
+  list=sdSortList(list, ctx);   /* 与屏幕同序 */
   const cols=sdCols();
   const head=[sdDimName(dim),'场景'].concat(cols.map(function(c){ return c.t; }));
   const lines=[head.map(csvCell).join(',')];
@@ -5073,7 +5082,7 @@ function renderSkuTable(all, idx){
   if(eb)eb.onclick=()=>{
     const mode=es?es.value:'view';
     if(mode==='view') exportSkuView(sorted,'当前范围');
-    else if(mode==='page') exportCsv(view,'当前页',false);
+    else if(mode==='page') exportSkuView(view,'当前页');   /* v79：与表格同列，原来输出 38 列原始字段 */
     else if(mode==='cols') exportCsv(sorted,'精简列',true);
     else exportCsv(sorted,'全部',false);
   };
@@ -5156,14 +5165,18 @@ function exportSkuView(rows, tag, colsIn){
   const cols=colsIn||skuCols();
   const head=cols.map(function(c){ return c[1]; });
   const p1=v=>(v==null||!isFinite(v))?'':(v*100).toFixed(1)+'%';
+  /* 与表格 rateCapped 一致：≥500% 显示 >500%，避免导出出现 1200% 这种表格上没有的值 */
+  const rc=v=>(v==null||!isFinite(v))?'':(v>=5?'>500%':(v*100).toFixed(1)+'%');
   const lines=[head.map(csvCell).join(',')];
   rows.forEach(function(r){
     const days=r.d7>0?r.invP/r.d7:null;
     const v={
       sku:r.sku, asin:r.asin||'', bg:r.bg, c3:r.c3, own:r.own, sc:r.sc,
       q4:r.q4, f4:Math.round(r.f4||0),
-      aBW:p1(r.aBW), aCM:p1(r.aCM), aBS:p1(r.aBS), aCI:p1(r.aCI),
+      aBW:rc(r.aBW), aCM:rc(r.aCM), aBS:rc(r.aBS), aCI:rc(r.aCI),
       tagR:tagR(r.f4>0?r.q4/r.f4:null).t,
+      /* v79：补齐最新周三项——此前 SKU_COLS 有这三列但取值表里没有，导出整列为空 */
+      lwPr:p1(r.lwPr), lwAd:p1(r.lwAd), lwWh:p1(r.lwWh),
       pr:p1(r.pr), tagP:tagP(r.pr).t,
       adp:p1(r.adp), whp:p1(r.whp), acos:p1(r.acos),
       invP:r.invP, tagS:tagS(r.invP).t, invS:r.invS, inv:r.inv,
@@ -5267,7 +5280,7 @@ function renderFoot(){
       `<b>排序</b>：点列头排序，再点切换升降序；「清除筛选」清空该层的条件，收起筛选行不会清条件。`,
       `<b>折叠</b>：每个板块标题右上角的箭头可折叠整块，状态记在本地；标题左侧色条与编号是板块识别色。`,
       `<b>异常下钻</b>：01 KPI / 洞察卡、02 异常 KPI 与矩阵、03 场景表里带虚线的数字，点击直接弹窗列出这批 SKU 的全字段（27 列），可排序 / 筛选 / 导出；04 仍是逐级点行下钻。`,
-      `<b>导出</b>：列、列名、取值与页面表格完全一致（04 本层汇总 22 列 / SKU 明细 24 列 / 03 场景表 23 列 / 交叉表 26 列）；精度同页面（百分 1 位小数、件数取整、天数取整）。范围＝当前筛选与下钻结果；要整版数据用页头「全量导出 CSV」（绕过全部筛选）。CSV 为 UTF-8 BOM，Excel 直接打开。`,
+      `<b>导出</b>：列、列名、取值与页面表格完全一致——列数随当前「列分组」与「自定义列」变化（04 默认 17 列 / SKU 末层 27 列 / 03 场景表 26 列 / 交叉表 26 列）；精度同页面（百分 1 位小数、件数取整、天数取整）。04 每层可选「汇总」或「SKU 明细」；SKU 末层另有 4 种模式（与表格同列 / 当前页 / 精简 22 列 / 全部字段 38 列）。03 场景表导出会展开全部子行（屏幕折叠时也导出），交叉表跟随当前排序。范围＝当前筛选与下钻结果；整版数据用页头「全量导出 CSV」（绕过全部筛选）。CSV 为 UTF-8 BOM，Excel 直接打开。`,
       `<b>建议态</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（${DB.version}）输出的建议，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。`
     ]},
     {h:'视觉与读法', items:[
