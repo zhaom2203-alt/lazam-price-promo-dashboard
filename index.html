@@ -1228,22 +1228,68 @@ table.tvt tfoot td{font-weight:700;color:var(--ink);background:#fafcff;border-to
 .sidenav.mini .navi.up{padding-top:11px}
 .sidenav.mini .navi.up .nup{display:inline;font-size:14px}
 
+/* ===== 整页布局：左常驻竖栏 + 右内容（v70） ===== */
+.app{display:grid;grid-template-columns:224px minmax(0,1fr);min-height:100vh;align-items:start}
+.app.navmini{grid-template-columns:66px minmax(0,1fr)}
+.appmain{min-width:0;padding:14px 24px 56px}
+.app>.sidenav{position:sticky;top:0;z-index:20;height:100vh;display:flex;flex-direction:column;gap:2px;
+  padding:14px 12px 14px;background:#fff;border-right:1px solid var(--line);
+  border-radius:0;box-shadow:none;overflow-y:auto;overflow-x:hidden}
+
+/* 侧栏品牌 */
+.sidenav .navbrand{display:flex;align-items:center;gap:10px;padding:0 2px 12px;
+  border-bottom:1px solid var(--line2);margin-bottom:10px}
+.sidenav .navbrand .logo{width:38px;height:38px;border-radius:11px;flex:none;font-size:11.5px}
+.sidenav .navbrand .nbt{flex:1;min-width:0;font-size:13.5px;font-weight:700;line-height:1.3;color:var(--ink)}
+.sidenav .navsec{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#9aa6ba;padding:2px 10px 8px}
+
+/* 侧栏条目：一级带图标，二级缩进 */
+.sidenav .navi{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;font-size:13.5px}
+.sidenav .navi .nic{flex:none;width:18px;height:18px;color:#7c8aa3;display:flex;align-items:center;justify-content:center}
+.sidenav .navi .nic svg{width:18px;height:18px;display:block}
+.sidenav .navi:hover .nic,.sidenav .navi.on .nic{color:var(--accent)}
+.sidenav .navi.sub{padding:6px 10px 6px 36px;font-size:13px;color:#5c6b85}
+.sidenav .navi.sub .nic{display:none}
+.sidenav .navi .nsh{display:none}
+.sidenav .navi.up{margin-top:auto;border-top:1px solid var(--line2);border-radius:0;justify-content:center;
+  color:var(--muted);font-size:12.5px;padding-top:12px}
+.sidenav .navi.up:hover{background:transparent;color:var(--accent)}
+
+/* 收起：只剩图标 + 短标签 */
+.sidenav.mini{padding:14px 8px 14px}
+.sidenav.mini .navbrand{flex-direction:column;gap:8px;padding:0 0 10px}
+.sidenav.mini .navbrand .nbt,.sidenav.mini .navsec{display:none}
+.sidenav.mini .navi{justify-content:center;padding:9px 0;gap:0}
+.sidenav.mini .navi .nt{display:none}
+.sidenav.mini .navi.sub{display:flex;padding:7px 0;font-size:10.5px;letter-spacing:.2px;color:#6b7a93}
+.sidenav.mini .navi.sub .nsh{display:inline}
+.sidenav.mini .navi.up .nsh{display:inline;font-size:14px}
+.sidenav.mini .navi.on::before{left:-8px;width:3px;height:16px}
+
+/* 顶栏只剩右侧工具条；筛选吸顶留出空隙 */
+.appmain .topbar{justify-content:flex-end;padding:2px 2px 12px}
+section.block{scroll-margin-top:76px}
+[id^="dim"]{scroll-margin-top:80px}
+
+@media (max-width:1180px){
+  .app,.app.navmini{grid-template-columns:minmax(0,1fr)}
+  .app>.sidenav{display:none}
+  .appmain{padding:12px 16px 44px}
+}
+
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="app" id="app">
+
+  <aside class="sidenav" id="sidenav"></aside>
+
+  <div class="appmain">
 
   <div class="topbar">
-    <div class="brand">
-      <div class="logo" id="logoTag">W43</div>
-      <div>
-        <h1>巴西运营监控看板</h1>
-        <p class="sub">业务组 → BU → 销售负责人 → 三级分类 → 国家Listing → SKU｜巴西站亚马逊（BR·AMZ）价·促·营三维度达成监控，可逐级下钻</p>
-      </div>
-    </div>
     <div class="vtop">
       <div class="vrow">
-      <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】（632 行），忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
+      <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】，忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
       <div class="versel" id="verSelBox">
         <span class="vlab">数据版本</span>
         <select id="verSel"></select>
@@ -1269,8 +1315,6 @@ table.tvt tfoot td{font-weight:700;color:var(--ink);background:#fafcff;border-to
     <div class="drillbar" id="drillBar"></div>
   </div>
 
-  <div class="cols">
-    <nav class="sidenav" id="sidenav"></nav>
     <div class="main">
 
       <!-- 01 -->
@@ -1729,7 +1773,7 @@ function renderTop(){
     `周期 <b>${DB.weeks[0]} ~ ${DB.weeks[3]}</b>`,
     `生成 <b>${DB.builtAt}</b>`
   ].map(t=>`<span class="pill">${t}</span>`).join('');
-  $('#logoTag').textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
+  const lg=$('#logoTag'); if(lg) lg.textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
   const ae=$('#allExp');
   if(ae) ae.onclick=()=>{
     /* 全量：当前版本全部 SKU，绕过全局筛选 / 下钻范围 / 列筛选 */
@@ -1820,18 +1864,25 @@ function renderDrill(){
 }
 
 /* ---------- 侧栏 ---------- */
+/* 一级：图标 + 全称；二级：无图标，收起时显示短标签（BU / 负责 / 分类 / LIST / SKU） */
+const NIC={
+  grid:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5.7" height="5.7" rx="1.5"/><rect x="11.3" y="3" width="5.7" height="5.7" rx="1.5"/><rect x="3" y="11.3" width="5.7" height="5.7" rx="1.5"/><rect x="11.3" y="11.3" width="5.7" height="5.7" rx="1.5"/></svg>',
+  alert:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.3 17.7 16.4H2.3z"/><path d="M10 8.2v3.6"/><circle cx="10" cy="14.1" r=".9" fill="currentColor" stroke="none"/></svg>',
+  layers:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m10 3 7.2 3.7L10 10.4 2.8 6.7z"/><path d="m2.8 10.4 7.2 3.7 7.2-3.7"/><path d="m2.8 13.9 7.2 3.7 7.2-3.7"/></svg>',
+  list:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.3 5.4h10.5M6.3 10h10.5M6.3 14.6h10.5"/><circle cx="3.4" cy="5.4" r="1" fill="currentColor" stroke="none"/><circle cx="3.4" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="3.4" cy="14.6" r="1" fill="currentColor" stroke="none"/></svg>'
+};
 const NAV=[
-  {id:'sec1',n:'01',t:'整体达成概况'},
-  {id:'secAno',n:'02',t:'核心异常监控'},
-  {id:'sec2',n:'03',t:'场景策略分布'},
-  {id:'sec5',n:'04',t:'维度下钻'},
-  {id:'dim0',n:'',t:'BU',sub:1},
-  {id:'dim1',n:'',t:'销售负责人',sub:1},
-  {id:'dim2',n:'',t:'三级分类',sub:1},
-  {id:'dim3',n:'',t:'国家Listing',sub:1},
-  {id:'dim4',n:'',t:'SKU',sub:1}
+  {id:'sec1', n:'01', t:'整体达成概况', ic:'grid'},
+  {id:'secAno', n:'02', t:'核心异常监控', ic:'alert'},
+  {id:'sec2', n:'03', t:'场景策略分布', ic:'layers'},
+  {id:'sec5', n:'04', t:'维度下钻', ic:'list'},
+  {id:'dim0', t:'BU', sub:1, sh:'BU'},
+  {id:'dim1', t:'销售负责人', sub:1, sh:'负责'},
+  {id:'dim2', t:'三级分类', sub:1, sh:'分类'},
+  {id:'dim3', t:'国家Listing', sub:1, sh:'LIST'},
+  {id:'dim4', t:'SKU', sub:1, sh:'SKU'}
 ];
-/* 目录收起状态：收起后只留 01–04 编号，点 « / » 切换，记在 localStorage */
+/* 收起状态：窄栏只留图标 / 短标签，点 « » 切换，记在 localStorage */
 let NAV_MINI=false;
 try{ NAV_MINI = localStorage.getItem('bpNavMini')==='1'; }catch(e){}
 function applyNavMode(){
@@ -1841,7 +1892,7 @@ function applyNavMode(){
   nav.parentElement.classList.toggle('navmini', NAV_MINI);
   const b=nav.querySelector('.navtog');
   if(b){
-    b.textContent = NAV_MINI?'»':'«';
+    b.innerHTML = NAV_MINI?'&rsaquo;':'&lsaquo;';
     const t = NAV_MINI?'展开目录':'收起目录';
     b.title=t; b.setAttribute('aria-label',t); b.setAttribute('aria-expanded', String(!NAV_MINI));
   }
@@ -1853,17 +1904,25 @@ function toggleNav(){
 }
 function renderNav(){
   const n=$('#sidenav');
-  n.innerHTML='<div class="navh"><span class="nlbl">目录</span><i class="nline"></i>'+
-    '<button class="navtog" type="button" aria-controls="sidenav"></button></div>';
+  n.innerHTML=
+    '<div class="navbrand">'+
+      '<div class="logo" id="logoTag">'+(DB.viewWeek||'')+'</div>'+
+      '<div class="nbt">巴西运营监控<br>看板</div>'+
+      '<button class="navtog" type="button" aria-controls="sidenav"></button>'+
+    '</div>'+
+    '<div class="navsec">页面目录</div>';
   n.querySelector('.navtog').onclick=e=>{e.preventDefault();toggleNav();};
   NAV.forEach(it=>{
-    const a=el('a','navi'+(it.sub?' sub':''),`<span class="nn">${it.n||'·'}</span><span class="nt">${it.t}</span>`);
+    const a=el('a','navi'+(it.sub?' sub':''),
+      (it.ic?'<i class="nic">'+NIC[it.ic]+'</i>':'')+
+      '<span class="nt">'+it.t+'</span>'+
+      (it.sh?'<span class="nsh">'+it.sh+'</span>':''));
     a.href='#'+it.id;
     a.title=it.t;
     a.onclick=e=>{e.preventDefault();const t=document.getElementById(it.id); if(t)t.scrollIntoView({behavior:'smooth',block:'start'});};
     n.appendChild(a);
   });
-  const up=el('a','navi up','<span class="nt">回到顶部</span><span class="nup">↑</span>');
+  const up=el('a','navi up','<span class="nt">回到顶部</span><span class="nsh">↑</span>');
   up.href='#'; up.title='回到顶部';
   up.onclick=e=>{e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});};
   n.appendChild(up);
@@ -4549,7 +4608,7 @@ function renderAll(){
 }
 let kwTimer=null;
 function boot(){
-  renderTop(); renderNav(); renderAll(); renderFoot();
+  renderNav(); renderTop(); renderAll(); renderFoot();
   $('#verSel').addEventListener('change',e=>setVersion(e.target.value));
   const rb=$('#anoRuleBtn');
   if(rb) rb.onclick=function(){
