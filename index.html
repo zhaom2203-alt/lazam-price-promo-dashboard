@@ -1277,28 +1277,108 @@ section.block{scroll-margin-top:76px}
   .appmain{padding:12px 16px 44px}
 }
 
+/* ===== v71：标题上移 + 筛选卡 + 侧栏放大 ===== */
+:root{--headh:60px}
+.apphead{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:9px 22px;background:#fff;border-bottom:1px solid var(--line)}
+.apphead .brand{display:flex;align-items:center;gap:12px;min-width:0}
+.apphead .logo{width:40px;height:40px;border-radius:11px;font-size:11.5px;letter-spacing:.2px}
+.apphead .bt{min-width:0}
+.apphead h1{margin:0;font-size:19px;line-height:1.22;letter-spacing:.2px}
+.apphead .bsub{margin:1px 0 0;font-size:11.5px;color:var(--muted);letter-spacing:.2px;white-space:nowrap}
+.apphead .vtop{display:flex;flex-direction:row;align-items:center;gap:10px;margin-left:auto;
+  flex-wrap:wrap;justify-content:flex-end}
+.apphead .vrow{display:flex;align-items:center;gap:8px}
+.apphead .meta{gap:8px}
+.apphead .meta .pill{padding:5px 11px;font-size:12px;box-shadow:none;background:#f7f9fd;
+  max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 侧栏：字号 / 间距 / 宽度都放大一档 */
+.app{grid-template-columns:248px minmax(0,1fr)}
+.app.navmini{grid-template-columns:72px minmax(0,1fr)}
+.app>.sidenav{top:var(--headh);height:calc(100vh - var(--headh));padding:16px 14px}
+.sidenav .navtop{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:0 4px 10px;border-bottom:1px solid var(--line2);margin-bottom:10px}
+.sidenav .navsec{padding:0;font-size:11.5px;letter-spacing:1.6px}
+.sidenav .navi{gap:11px;padding:11px 12px;font-size:14.5px;border-radius:11px}
+.sidenav .navi .nic{width:20px;height:20px}
+.sidenav .navi .nic svg{width:20px;height:20px}
+.sidenav .navi.sub{padding:7px 12px 7px 45px;font-size:13.5px}
+.sidenav .navi.up{font-size:13px}
+.sidenav.mini{padding:16px 10px}
+.sidenav.mini .navtop{justify-content:center;padding:0 0 10px;border-bottom:0;margin-bottom:6px}
+.sidenav.mini .navsec{display:none}
+.sidenav.mini .navi{padding:11px 0}
+.sidenav.mini .navi.sub{padding:8px 0;font-size:11px}
+
+/* 筛选条：白色卡片、单行 */
+.appmain{padding:16px 24px 56px}
+.filters{position:static;background:#fff;border:1px solid var(--line);border-bottom:1px solid var(--line);
+  border-radius:14px;padding:11px 14px;margin:0 0 16px;box-shadow:var(--shadow);backdrop-filter:none}
+.fbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.fgroup{display:flex;align-items:center;gap:9px}
+.flab{font-size:12px;color:var(--muted);letter-spacing:.4px;white-space:nowrap}
+.fvline{display:block;width:1px;height:20px;background:var(--line)}
+.fgrow{flex:1 1 auto;min-width:8px}
+.fsel{font-family:inherit;font-size:13px;color:var(--ink);border:1px solid var(--line);border-radius:9px;
+  padding:6px 10px;background:#fff;cursor:pointer;min-width:100px}
+.fsel:hover{border-color:#c3d0ea;background:#fbfcff}
+.fsearch{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:9px;
+  padding:6px 10px;background:#fbfcff;min-width:200px;flex:0 1 300px}
+.fsearch svg{width:15px;height:15px;color:#9aa6ba;flex:none}
+.fsearch input[type=search]{border:0;background:transparent;outline:none;font-family:inherit;
+  font-size:13px;width:100%;color:var(--ink);padding:0}
+.fsearch:focus-within{border-color:#b9cdf0;background:#fff;box-shadow:0 0 0 3px rgba(47,91,215,.08)}
+.freset{font-family:inherit;border:1px solid var(--line);background:#fff;border-radius:9px;padding:6px 14px;
+  font-size:13px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+.freset:hover{border-color:#c3d0ea;color:var(--accent);background:#f4f8ff}
+.filters .drillbar{margin-top:9px}
+.filters .chip{padding:6px 13px;font-size:13px}
+
+/* 窄屏：顶栏收起 meta、筛选行收紧、竖栏隐藏后改单列 */
+@media (max-width:1440px){
+  .apphead .meta{display:none}
+  .fbar{gap:10px}
+  .fsearch{flex:0 1 232px;min-width:184px}
+  .filters .chip{padding:6px 10px;font-size:12.5px}
+}
+@media (max-width:1180px){
+  .app,.app.navmini{grid-template-columns:minmax(0,1fr)}
+  .apphead{padding:9px 16px}
+  .apphead .bsub{display:none}
+  .appmain{padding:14px 16px 44px}
+  .app>.sidenav{display:none;top:0;height:auto}
+}
+
 </style>
 </head>
 <body>
-<div class="app" id="app">
-
-  <aside class="sidenav" id="sidenav"></aside>
-
-  <div class="appmain">
-
-  <div class="topbar">
-    <div class="vtop">
-      <div class="vrow">
+<header class="apphead" id="apphead">
+  <div class="brand">
+    <div class="logo" id="logoTag">W45</div>
+    <div class="bt">
+      <h1>巴西运营监控看板</h1>
+      <p class="bsub">BR · AMZ｜价 · 促 · 营 三维度达成监控</p>
+    </div>
+  </div>
+  <div class="vtop">
+    <div class="vrow">
       <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】，忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
       <div class="versel" id="verSelBox">
         <span class="vlab">数据版本</span>
         <select id="verSel"></select>
         <span class="vtag" id="verTag">最新</span>
       </div>
-      </div>
-      <div class="meta" id="topMeta"></div>
     </div>
+    <div class="meta" id="topMeta"></div>
   </div>
+</header>
+
+<div class="app" id="app">
+
+  <aside class="sidenav" id="sidenav"></aside>
+
+  <div class="appmain">
 
   <div class="verbanner" id="verBanner" hidden>
     <span>正在查看历史版本 <b id="vbDate"></b><em id="vbWk"></em> · 数据非最新，请勿据此决策</span>
@@ -1306,11 +1386,17 @@ section.block{scroll-margin-top:76px}
   </div>
 
   <div class="filters">
-    <div class="frow">
-      <div class="fgroup"><label>业务组</label><div class="chips" id="fBg"></div></div>
-      <div class="fgroup"><label>SKU状态</label><div class="chips" id="fStatus"></div></div>
-      <div class="fgroup"><label>场景</label><div class="chips" id="fScene"></div></div>
-      <div class="fgroup"><label>搜索</label><input type="search" id="fKw" placeholder="SKU / ASIN / Listing / 分类"></div>
+    <div class="fbar">
+      <div class="fgroup"><span class="flab">业务组</span><div class="chips" id="fBg"></div></div>
+      <i class="fvline"></i>
+      <div class="fgroup"><span class="flab">状态</span><select class="fsel" id="fStatus"></select></div>
+      <div class="fgroup"><span class="flab">场景</span><select class="fsel" id="fScene"></select></div>
+      <div class="fgrow"></div>
+      <div class="fsearch">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="9" r="5.6"/><path d="m13.2 13.2 3.4 3.4"/></svg>
+        <input type="search" id="fKw" placeholder="搜索 SKU / ASIN / Listing">
+      </div>
+      <button class="freset" id="fReset" type="button">重置</button>
     </div>
     <div class="drillbar" id="drillBar"></div>
   </div>
@@ -1766,11 +1852,10 @@ function groupBy(rows,f){
 
 /* ---------- 顶栏 / 筛选 ---------- */
 function renderTop(){
+  /* v71：覆盖 / 周期 已由版本选择器显示，顶栏只留三条，避免标题行被挤成两行 */
   $('#topMeta').innerHTML=[
     `数据源 <b>${DB.source}</b>`,
     `范围 <b>${DB.scope}</b>`,
-    `覆盖 <b>${nf(ROWS.length)}</b> SKU`,
-    `周期 <b>${DB.weeks[0]} ~ ${DB.weeks[3]}</b>`,
     `生成 <b>${DB.builtAt}</b>`
   ].map(t=>`<span class="pill">${t}</span>`).join('');
   const lg=$('#logoTag'); if(lg) lg.textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
@@ -1833,10 +1918,17 @@ function chipGroup(host, items, cur, onPick){
     h.appendChild(b);
   });
 }
+/* 选项多的维度用下拉，避免筛选条被撑成两行 */
+function selGroup(host, items, cur, onPick){
+  const h=$(host); if(!h) return;
+  h.innerHTML=items.map(v=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+v+'</option>').join('');
+  h.value=cur;
+  h.onchange=()=>onPick(h.value);
+}
 function renderFilters(){
   chipGroup('#fBg',['全部',...DB.cat.bg],F.bg,v=>{F.bg=v;F.path=[];renderAll();});
-  chipGroup('#fStatus',['全部','在售','淘汰'],F.status,v=>{F.status=v;renderAll();});
-  chipGroup('#fScene',['全部',...SC_ORDER.filter(x=>DB.cat.sc.indexOf(x)>=0)],F.scene,v=>{F.scene=v;renderAll();});
+  selGroup('#fStatus',['全部','在售','淘汰'],F.status,v=>{F.status=v;renderAll();});
+  selGroup('#fScene',['全部',...SC_ORDER.filter(x=>DB.cat.sc.indexOf(x)>=0)],F.scene,v=>{F.scene=v;renderAll();});
   if($('#fKw').value!==F.kw) $('#fKw').value=F.kw;
 }
 function renderDrill(){
@@ -1846,7 +1938,7 @@ function renderDrill(){
   if(F.status!=='全部') chips.push({t:'状态',v:F.status,i:'status'});
   if(F.scene!=='全部') chips.push({t:'场景',v:F.scene,i:'scene'});
   F.path.forEach((p,i)=>chips.push({t:DIMDEF[i].name,v:p.v,i:'p'+i}));
-  if(!chips.length){ bar.innerHTML='<span style="font-size:12.5px;color:var(--muted)">未设置下钻条件 · 当前为全量视图</span>'; return; }
+  if(!chips.length){ bar.innerHTML=''; return; }   /* v71：无筛选时不占一行，卡片只剩选择器那一行 */
   chips.forEach(c=>{
     const d=el('span','dchip',`${c.t}：<b>${c.v}</b><i>×</i>`);
     d.querySelector('i').onclick=()=>{
@@ -1858,9 +1950,7 @@ function renderDrill(){
     };
     bar.appendChild(d);
   });
-  const rs=el('button','reset','清空全部条件');
-  rs.onclick=()=>{F.bg='全部';F.status='全部';F.scene='全部';F.kw='';F.path=[];renderAll();};
-  bar.appendChild(rs);
+  /* v71：「重置」按钮已移到筛选卡右侧，这里不再重复放一个 */
 }
 
 /* ---------- 侧栏 ---------- */
@@ -1905,12 +1995,10 @@ function toggleNav(){
 function renderNav(){
   const n=$('#sidenav');
   n.innerHTML=
-    '<div class="navbrand">'+
-      '<div class="logo" id="logoTag">'+(DB.viewWeek||'')+'</div>'+
-      '<div class="nbt">巴西运营监控<br>看板</div>'+
+    '<div class="navtop">'+
+      '<span class="navsec">页面目录</span>'+
       '<button class="navtog" type="button" aria-controls="sidenav"></button>'+
-    '</div>'+
-    '<div class="navsec">页面目录</div>';
+    '</div>';
   n.querySelector('.navtog').onclick=e=>{e.preventDefault();toggleNav();};
   NAV.forEach(it=>{
     const a=el('a','navi'+(it.sub?' sub':''),
@@ -4602,6 +4690,11 @@ function renderFoot(){
 }
 
 /* ---------- 启动 ---------- */
+/* 顶部标题栏吸顶，侧栏贴在其下：把实际高度写进 --headh */
+function syncHeadH(){
+  const h=document.getElementById('apphead');
+  if(h) document.documentElement.style.setProperty('--headh', Math.round(h.getBoundingClientRect().height)+'px');
+}
 function renderAll(){
   AF=[];
   renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims();
@@ -4616,6 +4709,10 @@ function boot(){
     rb.textContent=box.classList.contains('open')?'收起规则表 ▴':'展开规则表 ▾';
   };
   $('#verBack').addEventListener('click',()=>setVersion(VS.latest));
+  const rs=$('#fReset');
+  if(rs) rs.onclick=()=>{F.bg='全部';F.status='全部';F.scene='全部';F.kw='';F.path=[];renderAll();};
+  syncHeadH();
+  window.addEventListener('resize',syncHeadH);
   $('#trendSel').addEventListener('change',e=>{trendMode=e.target.value;renderAll();});
   $('#fKw').addEventListener('input',e=>{
     clearTimeout(kwTimer);
