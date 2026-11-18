@@ -1515,6 +1515,11 @@ section.block{scroll-margin-top:76px}
 .sdmat th .scth i{margin:0}
 .sksel.expsel{min-width:126px}
 
+/* ===== v78：02 汇总条四个数可点 ===== */
+.bmeta .mtag .afl{border-bottom-style:dotted;padding:0 2px;border-radius:5px}
+.bmeta .mtag .afl:hover{background:rgba(47,91,215,.1)}
+.bmeta .mtag .afl b{text-decoration:none}
+
 </style>
 </head>
 <body>
@@ -2215,7 +2220,7 @@ function drillNum(rows, label, pred, inner, modal){
   if(!n) return inner;
   AF.push({label:label, pred:pred, rows:rows, modal:!!modal});
   const id=AF.length-1;
-  return '<span class="afl" data-af="'+id+'" title="'+(modal?'点击查看这 ':'点击定位到这 ')+n+' 个 SKU'+(modal?'的明细':'')+'">'+inner+'</span>';
+  return '<span class="afl" data-af="'+id+'" title="'+(modal?'点击查看这 ':'点击定位到这 ')+n+' 个 SKU'+(modal?' 的明细':'')+'">'+inner+'</span>';
 }
 function focusSku(label, pred){
   ANO_FOCUS={label:label, pred:pred};
@@ -3799,18 +3804,28 @@ function renderAno(){
   const zombieN=zombieRows.length;
   const zombieInv=zombieRows.reduce((a,r)=>a+(r.invP||0),0);
   const zombieDead=zombieRows.filter(r=>r.q4<=0).length;
-  const bAll=big.filter(r=>FL(r).over||FL(r).low||FL(r).oos||FL(r).pile||FL(r).prU13||(r.q4>0&&!(r.f4>0))).length;
 
   $('#anoScope').textContent = nf(mat.length)+' / '+nf(rows.length)+' 个 SKU 纳入判定';
-  $('#anoMeta').innerHTML = '<span class="mtag">重点层 <b>'+nf(big.length)+'</b> ｜ P0 <b style="color:#b3271f">'+nf(c0)+
-    '</b> ｜ P1 <b style="color:#a9761a">'+nf(c1)+'</b> ｜ 批量层 <b style="color:#2f5bd7">'+nf(c2)+'</b></span>';
+  /* KPI 与汇总条都要用严重度，先定义 */
+  const sevOf=function(r){ const d=diag(r); return d?d.sev:9; };
+
+  /* v78：四个数都做成入口——原来只能看数字，批量层尤其没有出口 */
+  const ent=function(label, pred, txt, color){
+    const inner='<b'+(color?' style="color:'+color+'"':'')+'>'+txt+'</b>';
+    return drillNum(rows, label, pred, inner);
+  };
+  $('#anoMeta').innerHTML = '<span class="mtag">'+
+    '重点层 '+ent('重点层（4周订单 ≥28）', function(r){ return FL(r).mat && FL(r).big; }, nf(big.length))+
+    ' ｜ P0 '+ent('P0 即时处理', function(r){ return FL(r).mat && sevOf(r)===0; }, nf(c0), '#b3271f')+
+    ' ｜ P1 '+ent('P1 本周', function(r){ return FL(r).mat && sevOf(r)===1; }, nf(c1), '#a9761a')+
+    ' ｜ 批量层 '+ent('批量层 P2（不限体量）', function(r){ return FL(r).mat && sevOf(r)===2; }, nf(c2), '#2f5bd7')+
+    '</span>';
 
   /* KPI */
-  const sevOf=function(r){ const d=diag(r); return d?d.sev:9; };
   /* v74：每张卡补一句「这个数是怎么来的」，鼠标悬停即可看 */
   const TIP={
-    core:'核心异常＝重点层里命中 P0（立办）或 P1（本周）的 SKU 数。重点层＝有效池中 4周订单 ≥28 件的 SKU。'+
-         '副标「重点层命中 X / Y」＝这 Y 个重点层 SKU 里，有 X 个至少命中一条异常规则（超达 / 低达 / 断货 / 压货 / 低毛利 / 有销无预测）。',
+    core:'核心异常＝命中 P0（立办）或 P1（本周）的 SKU 数。P0 / P1 都要求 4周订单 ≥28 件（重点层），'+
+         '所以这个数一定落在重点层里。副标给的是比例：占有效池（订单或预测 ≥10 的 SKU）、占当前筛选后的全部 SKU。',
     p0:'P0＝立办，只有两条规则：①毛利倒挂（订单≥28 且毛利率<0）②超达且断货、且调拨建议不是「断货可调入」。'+
        '一个 SKU 只归一条主因，所以副标两项相加可能大于本数（同一 SKU 两条都符合时先记倒挂）。',
     over:'超达＝重点层里最新版达成 ≥110%（4周订单 ÷ 4周最新版预测）。副标「调拨未跟上」＝其中平台仓已断货、'+
@@ -3824,7 +3839,7 @@ function renderAno(){
          '基本只能清货或报废。'
   };
   const kp=[
-    {k:'核心异常 SKU',v:nf(c0+c1),s:'重点层命中 <b>'+nf(bAll)+'</b> / '+nf(big.length),hl:1,tip:TIP.core,
+    {k:'核心异常 SKU',v:nf(c0+c1),s:'占有效池&nbsp;<b>'+pct(mat.length?(c0+c1)/mat.length:null)+'</b> · 占全部&nbsp;<b>'+pct(rows.length?(c0+c1)/rows.length:null)+'</b>',hl:1,tip:TIP.core,
       p:function(r){ return FL(r).mat && sevOf(r)<=1; }, l:'核心异常（P0+P1）'},
     {k:'P0 即时处理',v:nf(c0),s:'超达断货未调拨 <b>'+nf(bOverGap)+'</b> · 倒挂 <b>'+nf(bNeg)+'</b>',hl:1,tip:TIP.p0,
       p:function(r){ return FL(r).mat && sevOf(r)===0; }, l:'P0 即时处理'},
@@ -5241,7 +5256,7 @@ function renderFoot(){
       `<b>01 业务组表现</b>：两张组卡的四个达成与全盘同源——最新版＝Σ订单 ÷ Σ最新版预测，加权＝Σ订单 ÷ Σ加权预测；「最新周」取区间最后一周（本期 W44），「4周累计」取四整周。卡内订单 / 利润率下方小字即该组最新周数值，可售天数小字为动销口径（剔除 7DMS=0 的库存）。右上角标签是达成打标（超达 / 达成 / 达成偏低 / 严重低达 / 无预测），与 02 / 04 同一套阈值。`,
       `<b>01 周度 / 月度趋势</b>：周度图一块画布上下两层——<b>上层（件/周）</b>柱＝当周订单、深色虚线＝当周最新版预测、紫色点线＝当周加权预测；<b>下层（右轴 %）</b>橙线＝预测达成（订单÷最新版预测）、绿线＝加权达成（订单÷加权预测）。「查看图表数据」表给出五列原值，合计行是「先求和再相除」。月度图取 2026 年 1–9 月的日均销量（Σ7DMS），悬停 / 点击任一月看数值，表按月份逐行列出。`,
       `<b>02 判定范围</b>：有效池＝4周订单 ≥10 或预测 ≥10（其余静默 SKU，只计数不判定）；重点层＝有效池中 4周订单 ≥28 件。<b>严重度</b>：P0 立办（超达断货未调拨、毛利倒挂）／P1 本周（超达低毛利、低达压货、无预测等）／P2 批量，自上而下命中即停。`,
-      `<b>02 七张卡</b>：<b>核心异常</b>＝重点层里 P0+P1 的 SKU 数，副标「重点层命中 X/Y」＝Y 个重点层 SKU 里有 X 个至少命中一条异常规则；<b>P0</b>＝立办，只有「毛利倒挂」与「超达断货且调拨未跟上」两条，一个 SKU 只记一条主因；<b>超达</b>＝重点层达成 ≥110%，副标「调拨未跟上」＝其中平台仓断货但调拨建议不是「断货可调入」；<b>低达</b>＝重点层达成 &lt;90%，副标「零动作」＝其中无建议提报且广告无建议；<b>利润异常</b>＝重点层毛利率 &lt;8%（&lt;0 为倒挂）；<b>库存异常</b>＝重点层断货（平台仓 ≤0）或压货（&gt;70 天 / 连续重度）；<b>僵尸库存</b>＝全盘 7DMS=0 但平台仓有货，副标「死库存」＝其中 4 周零订单。副标两项之和大于主数，是因为一个 SKU 可同时命中多条条件。`,
+      `<b>02 七张卡</b>：<b>核心异常</b>＝命中 P0+P1 的 SKU 数，副标是它占有效池与占全部 SKU 的比例；<b>板块标题右侧四个数（重点层 / P0 / P1 / 批量层）都可点</b>，分别打开对应的 SKU 清单；<b>P0</b>＝立办，只有「毛利倒挂」与「超达断货且调拨未跟上」两条，一个 SKU 只记一条主因；<b>超达</b>＝重点层达成 ≥110%，副标「调拨未跟上」＝其中平台仓断货但调拨建议不是「断货可调入」；<b>低达</b>＝重点层达成 &lt;90%，副标「零动作」＝其中无建议提报且广告无建议；<b>利润异常</b>＝重点层毛利率 &lt;8%（&lt;0 为倒挂）；<b>库存异常</b>＝重点层断货（平台仓 ≤0）或压货（&gt;70 天 / 连续重度）；<b>僵尸库存</b>＝全盘 7DMS=0 但平台仓有货，副标「死库存」＝其中 4 周零订单。副标两项之和大于主数，是因为一个 SKU 可同时命中多条条件。`,
       `<b>周均缺口</b>：缺口＝Σ4周订单 − Σ4周最新版预测，负＝缺口（订单没达到预测，绿色），正＝超达（红色）。除以 4 得周均，全盘 11,337 − 16,982 ＝ −5,645 件，周均 −1,411.3 件/周。按周拆开就是 W41 −999、W42 −2,084、W43 −1,595、W44 −967；01 洞察卡的「缺口拆解」逐周列出，可以定位是哪一周掉下来的。`, 
       `<b>03 场景</b>：取明细表「场景类型-最新」（判定条件见源表「输出逻辑」页）——淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率 &lt;95% 且可售 &gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。一个 SKU 只落一个场景，六场景相加＝全盘。`,
       `<b>03 交叉表</b>：矩阵行是维度值、列是六个场景，格内 SKU 数 · 4周订单，底色按本场景内归一；下方全字段表一行＝一个「维度值 × 场景」组合，列同上表（24 列，可分组），合计与上表逐位对齐。点格子 / 点维度值 / 点场景表头可收窄，✕ 取消；维度值超 14 项默认列前 14（按订单降序）。`
