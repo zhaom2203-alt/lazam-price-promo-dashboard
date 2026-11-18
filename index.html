@@ -406,7 +406,6 @@ footer .fh{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px}
   font-weight:700;display:grid;place-items:center}
 .subblock-head .scope{font-size:12px;color:#22409b;background:var(--accent-soft);border-radius:6px;padding:2px 8px;max-width:520px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.subblock-head .hint{font-size:11.5px;color:var(--muted);margin-left:auto}
 .subblock-head .cnt{font-size:12px;color:var(--muted);background:#f4f6fb;border-radius:6px;padding:2px 7px}
 .sidenav .navi.sub{padding:6px 12px 6px 26px;font-size:13px;color:#5c6b85}
 .sidenav .navi.sub .nn{min-width:10px;color:#b8c3d4}
@@ -463,7 +462,6 @@ table.dt tfoot td.l{text-align:left}
 
 /* 空态 */
 .empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
-.tnote{font-size:11.5px;color:var(--muted);padding:0 18px 12px;line-height:1.7}
 
 /* ===== 核心异常模块 ===== */
 .kpis.six{grid-template-columns:repeat(6,minmax(0,1fr))}
@@ -801,8 +799,6 @@ table.dt tfoot td{background:#f5f8fd;font-size:12.5px;color:var(--ink)}
 .stdbtn i{font-style:normal;font-size:9px;margin-left:2px;opacity:.75}
 .stdwrap .std-grid{display:none}
 .stdwrap.open .std-grid{display:grid;padding:2px 12px 10px;gap:10px}
-.stdwrap .tnote{display:none}
-.stdwrap.open .tnote{display:block;padding:0 14px 12px;font-size:11.5px;color:var(--muted);line-height:1.7}
 .stdwrap.open .std{background:#fff;border-color:var(--line)}
 .stdwrap .std h4 .sc{font-style:normal;font-size:10px;font-weight:600;color:#93a2ba;
   background:#eef2f9;border-radius:5px;padding:1px 6px;margin-left:auto}
@@ -1281,27 +1277,23 @@ td.lwt .lwc[title]{cursor:help}
       <section class="block" id="sec2">
         <div class="block-head">
           <div class="btitle"><span class="bnum">03</span><h2>场景策略分布</h2><span class="cnt" id="s2scope"></span></div>
-          <div class="bmeta"><span class="mtag">场景口径：<b>最新标签</b> ｜ 点击行联动筛选</span></div>
         </div>
         <div class="subhead"><span>场景 × 达成 / 毛利 / 库存</span><span class="scnctl" id="scnCtl"></span></div>
         <div id="sceneTable"></div>
-        <div class="tnote" id="sceneNote"></div>
 
         <!-- 03-B 场景 × 维度交叉 -->
         <div class="subhead" id="sdSub">
-          <span>场景 × 维度交叉<b>每个维度值在六个场景下的全部字段</b></span>
+          <span>场景 × 维度交叉</span>
           <span class="scnctl" id="sdCtl"></span>
         </div>
         <div id="sdMatrix"></div>
         <div id="sdTable"></div>
-        <div class="tnote" id="sdNote"></div>
       </section>
 
       <!-- 04 -->
       <section class="block" id="sec5">
         <div class="block-head">
           <div class="btitle"><span class="bnum">04</span><h2>维度下钻</h2><span class="cnt" id="s5scope"></span></div>
-          <div class="bmeta"><span class="mtag">点击任意行 → 下钻 ｜ 到 SKU 层可排序、翻页、导出 CSV</span></div>
         </div>
         <div id="dimHost"></div>
         <div class="legend" id="dimLegend"></div>
@@ -2557,7 +2549,6 @@ function renderScene(){
 
   if(!base.length){
     $('#sceneTable').innerHTML='<div class="empty">当前筛选范围内无数据</div>';
-    $('#sceneNote').innerHTML='';
     return;
   }
 
@@ -2695,9 +2686,6 @@ function renderScene(){
     renderScene();
   };
 
-  $('#sceneNote').innerHTML='场景口径取自明细表「场景类型-最新」；判定条件见源表「输出逻辑」页：淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率&lt;95% 且可售&gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。'+
-    (dim?'<b>当前按 '+dimName+' 拆分</b>：场景行是该场景小计，子行是「场景 × '+dimName+'」的组合，两者指标口径相同（都是 Σ分子 ÷ Σ分母）。点场景行切换全局场景筛选，点子行弹窗看这批 SKU。'
-    :'<b>点击场景行的数字可弹窗看该场景的 SKU</b>，点击行空白处可联动筛选全表。顶部「拆分维度」可继续按 BU / 负责人 / Listing / SKU 展开。');
 }
 
 
@@ -2794,7 +2782,6 @@ function renderSceneDim(){
   if(!combos.length){
     hostM.innerHTML='<div class="empty">当前筛选范围内无数据</div>';
     hostT.innerHTML='';
-    $('#sdNote').innerHTML='';
     return;
   }
 
@@ -2969,10 +2956,6 @@ function renderSceneDim(){
   if(pv) pv.onclick=function(){ if(SD.page>1){ SD.page--; renderSceneDim(); } };
   if(nx) nx.onclick=function(){ if(SD.page<pages){ SD.page++; renderSceneDim(); } };
 
-  $('#sdNote').innerHTML='交叉表把「'+dimName+' × 六个场景」逐组合展开：一行一个组合，列与上方场景表同一套字段（当前 '+cols.length+' 列）。'+
-    '场景口径仍取明细表「场景类型-最新」；合计行＝当前筛选范围内这些组合的 Σ分子 ÷ Σ分母，与上方场景表逐位对齐。'+
-    (SD.sel?'<b>当前只显示「'+ESCA(sdSelLabel())+'」</b>，点标签上的 ✕ 恢复全部。':'点击矩阵里的格子可只留一个组合。')+
-    '点表格行 → 弹窗看这批 SKU 的全字段明细；导出跟随当前筛选与列分组。';
 }
 
 /* 03-B 导出：与表格同列、同口径 */
@@ -3574,7 +3557,9 @@ function fParse(expr){
 var fTimer=null;
 
 function scopeText(i){
-  const parts=[F.bg==='全部'?'全部业务组':F.bg];
+  /* 只在被筛选/下钻收窄时返回文字；全盘时不显示，避免每层重复「全部业务组」 */
+  const parts=[];
+  if(F.bg!=='全部')parts.push(F.bg);
   if(F.scene!=='全部')parts.push(F.scene);
   if(F.status!=='全部')parts.push(F.status);
   for(let k=0;k<Math.min(i,F.path.length);k++)parts.push(F.path[k].v);
@@ -3599,8 +3584,8 @@ function renderDims(){
       wrap.appendChild(el('div','subblock-head',`
         <h3><span class="sn">${i+1}</span>${d.name}</h3>
         <span class="cnt" id="skuCnt">${nf(rows.length)} 行</span>
-        <span class="scope">范围：${scopeText(i)}</span>
-        <span class="hint">点击行查看 SKU 详情 · 可导出</span>`));
+        ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'</span>':''}
+        `));
       if(ANO_FOCUS){
         const fb=el('div','focusbar');
         fb.innerHTML='<b>异常定位</b> 已按「'+ANO_FOCUS.label+'」筛选：<b>'+nf(rows.length)+'</b> 个 SKU'
@@ -3655,8 +3640,7 @@ function renderDims(){
     wrap.appendChild(el('div','subblock-head',`
       <h3><span class="sn">${i+1}</span>${d.name}</h3>
       <span class="cnt">${nf(groups.length)} 项</span>
-      <span class="scope">范围：${scopeText(i)}</span>
-      <span class="hint">${i<DIMDEF.length-1?'点击行下钻 →':'点击行查看详情'}</span>
+      ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'</span>':''}
       <button class="fbtn${fOn?' on':''}${fKeys.length?' has':''}" data-fbtn="${i}" title="展开列筛选：数值列支持 &gt;100、&lt;0、8~13；文本列包含匹配；打标列选档位">筛选${fKeys.length?' '+fKeys.length:''}</button>
       <span class="cgseg" data-cgseg="${i}" title="按用途只显示相关列；导出跟随当前选择">${['all','scale','rate','profit','inv'].map(function(g){
         const on=(g==='all')?(dimCG(i)==='all'):(dimCG(i)!=='all'&&dimCG(i).split('+').indexOf(g)>=0);
@@ -4242,6 +4226,7 @@ function renderFoot(){
   <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
   <div><b>01 概况的口径细节（整版 ${nf(ROWS.length)} 个 SKU）</b>：<b>4周达成</b>的分母只含预测、分子却是全部订单——其中 <b>${nf(FM.noFcQ)}</b> 件订单所属 SKU 无任何预测（占 Σ订单 ${pct(FM.q?FM.noFcQ/FM.q:null)}），若只按「有预测子集」算则为 <b>${pct(FM.f>0?(FM.q-FM.noFcQ)/FM.f:null)}</b>。<b>可售天数</b>＝平台仓库存 <b>${nf(FM.invP)}</b> 件 ÷ 平台仓 7DMS <b>${nf(FM.d7,0)}</b>，<b>不含自发仓 ${nf(FM.invS)} 件</b>（总库存 ${nf(FM.inv)} 件）；其中含 <b>${nf(deadFull)}</b> 个零动销 SKU 的 <b>${nf(FM.deadInv)}</b> 件（占平台仓 ${pct(FM.invP?FM.deadInv/FM.invP:null)}），按动销口径（剔除零动销）为 <b>${FM.aliveDays==null?'—':nf(FM.aliveDays,1)}</b> 天。<b>利润率</b>＝业务毛利 ÷ 收入总额(审计)，与财务「毛利监控」表存在口径差异，详见校验报告。</div>
   <div><b>02 的判定范围与严重度</b>：<b>有效池</b>＝4周订单 ≥10 件或最新版预测 ≥10 件的 SKU（其余为静默 SKU，只计数不判定）；<b>重点层</b>＝有效池中订单 ≥28 件或预测 ≥28 件的 SKU，02 的「超达 / 低达 / 利润异常 / 库存异常」四张卡都按重点层口径统计。<b>严重度</b>：P0 立办（超达断货未调拨、毛利倒挂）／P1 本周（超达低毛利、低达压货、无预测等）／P2 批量（套用统一动作），自上而下命中即停。</div>
+  <div><b>03 的场景口径</b>：场景取明细表「场景类型-最新」列，判定条件见源表「输出逻辑」页——<b>淘汰</b>（淘汰标签）、<b>压货预警</b>（M1-M2 连续重度压货）、<b>压货提销</b>（达成率 &lt;95% 且可售 &gt;70 天）、<b>冲坑</b>（低达 &lt;90% 或预测环比大增）、<b>利润改善</b>（毛利率偏低）、<b>其他</b>。一个 SKU 只落一个场景（互斥），所以六个场景的 SKU 数相加＝全盘。</div>
   <div><b>03 场景 × 维度交叉</b>：矩阵行是维度值（BU / 销售负责人 / 三级分类 / 国家Listing / SKU），列是六个场景，格内 <b>SKU 数 · 4周订单</b>，底色深浅按该格 SKU 数在本场景内归一（同色系＝同一场景）。下方「全字段表」一行 = 一个「维度值 × 场景」组合，列与上方场景表同一套（24 列，可分组），合计行与上方场景表逐位对齐。<b>点格子</b>＝只看该组合，<b>点维度值</b>＝只看该维度值的全部场景，<b>点场景表头</b>＝只看该场景，标签上的 ✕ 取消；<b>点表格行</b>弹窗看这批 SKU 的全字段明细。导出跟随当前筛选与列分组；维度值超过 14 项时矩阵默认只列前 14（按订单降序），点「展开其余」看全部。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
