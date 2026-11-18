@@ -2254,10 +2254,12 @@ function renderOverview(){
   const tgt=0.06;
   const feeTxt=(m.adp==null)?'—':(m.adp>tgt?`高于目标 ${(m.adp*100-tgt*100).toFixed(1)}pt`:`优于目标 ${(tgt*100-m.adp*100).toFixed(1)}pt`);
   const ins=[
+    /* 四档占全部 SKU（含无预测），保证四行相加＝总数；无预测不进三档是因为分母为 0 */
     {h:'近四周最新预测达成结构',lines:[
-      `超达 ≥110% <b>${drillNum(rows,'超达 ≥110%',overP,nf(m.over))}</b> 个 · 占 ${pct(tot?m.over/tot:null)}`,
-      `达标 90–110% <b>${drillNum(rows,'达标 90–110%',hitP,nf(m.hit))}</b> 个 · 占 ${pct(tot?m.hit/tot:null)}`,
-      `未达 &lt;90% <b>${drillNum(rows,'未达 <90%',underP,nf(m.under))}</b> 个 · 占 ${pct(tot?m.under/tot:null)}`
+      `超达 ≥110% <b>${drillNum(rows,'超达 ≥110%',overP,nf(m.over))}</b> 个 · 占 ${pct(m.n?m.over/m.n:null)}`,
+      `达标 90–110% <b>${drillNum(rows,'达标 90–110%',hitP,nf(m.hit))}</b> 个 · 占 ${pct(m.n?m.hit/m.n:null)}`,
+      `未达 &lt;90% <b>${drillNum(rows,'未达 <90%',underP,nf(m.under))}</b> 个 · 占 ${pct(m.n?m.under/m.n:null)}`,
+      `无预测 <b>${drillNum(rows,'无预测（无最新版预测）',function(r){ return !(r.f4>0); },nf(m.n-tot))}</b> 个 · 占 ${pct(m.n?(m.n-tot)/m.n:null)}`
     ],cls:''},
     {h:'缺口最大 BU（周均）',lines:[
       worst?`${drillNum(rows,'BU：'+worst.k, r=>r.bu===worst.k, worst.k+' <b>'+nf(worst.gap,1)+'</b>')} 件/周`:'—',
@@ -4257,7 +4259,7 @@ function renderFoot(){
     {h:'库存与周转', items:[
       `<b>可售天数</b>＝Σ平台仓可销售展示库存 ÷ Σ平台仓 7DMS（<b>不含自发仓</b>）；<b>断货</b>＝平台仓库存 ≤0；<b>压货</b>＝可售天数 &gt;70 天或 M1-M2 连续重度压货；<b>总库存</b>＝平台仓 + 自发仓。`,
       `<b>整版数字（${nf(ROWS.length)} 个 SKU）</b>：平台仓 ${nf(FM.invP)} 件 ÷ 7DMS ${nf(FM.d7,0)} → 全口径 ${FM.days==null?'—':nf(FM.days,1)} 天；其中零动销 ${nf(deadFull)} 个 SKU、${nf(FM.deadInv)} 件（占平台仓 ${pct(FM.invP?FM.deadInv/FM.invP:null)}），<b>动销口径</b>（剔除这部分库存）＝ ${FM.aliveDays==null?'—':nf(FM.aliveDays,1)} 天；自发仓另计 ${nf(FM.invS)} 件。`,
-      `<b>无预测订单</b>：4周达成的分子含 <b>${nf(FM.noFcQ)}</b> 件无预测 SKU 的订单（占 Σ订单 ${pct(FM.q?FM.noFcQ/FM.q:null)}），只按「有预测子集」算则为 ${pct(FM.f>0?(FM.q-FM.noFcQ)/FM.f:null)}。利润率＝业务毛利 ÷ 收入总额(审计)，与财务「毛利监控」存在口径差异，详见校验报告。`
+      `<b>无预测 SKU（${nf(FM.n-FM.over-FM.hit-FM.under)} 个）</b>：最新版预测为 0，无法算达成率，所以不进「超达 / 达标 / 未达」三档，单列在 01 洞察卡第四行。其中 <b>${nf(FM.noFcQ>0?ROWS.filter(function(r){ return !(r.f4>0)&&r.q4>0; }).length:0)}</b> 个有订单（合计 <b>${nf(FM.noFcQ)}</b> 件，占 Σ订单 ${pct(FM.q?FM.noFcQ/FM.q:null)}），其余零单；它们的订单<b>仍计入 4周达成的分子</b>，只按「有预测子集」算则为 ${pct(FM.f>0?(FM.q-FM.noFcQ)/FM.f:null)}。利润率＝业务毛利 ÷ 收入总额(审计)，与财务「毛利监控」存在口径差异，详见校验报告。`
     ]},
     {h:'打标阈值', items:[
       `<b>预测达成</b>：≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测。`,
