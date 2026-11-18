@@ -1082,7 +1082,7 @@ td.lwt .lwc[title]{cursor:help}
 .gcard .gn{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.1}
 .gcard .gm i,.gcard .gi i{font-style:normal;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
 .gcard i.up{color:#b3271f} .gcard i.down{color:#17794f} .gcard i.flat{color:#9aa7bd}
-.gcard .gs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+.gcard .gs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:auto;
   padding-top:9px;border-top:1px dashed #e7eef9}
 .gcard .gs.five{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .gcard .gi{display:flex;flex-direction:column;gap:1px;min-width:0}
@@ -1148,6 +1148,15 @@ footer .fh{display:flex;align-items:center;gap:10px}
 .fsec li b{color:var(--ink2);font-weight:700}
 .fsec li::marker{color:#c2cfe6}
 @media (min-width:1280px){.foot-body{column-count:2;column-gap:34px}}
+
+/* ===== 库·周转 卡：可售天数五档表（v67） ===== */
+.gcard .gbands{margin-top:8px;border-top:1px dashed #e7eef9;padding-top:6px;font-size:10.6px;line-height:1.5}
+.gcard .gbr{display:grid;grid-template-columns:1.55fr .6fr .85fr .85fr .7fr;gap:4px;align-items:center;
+  padding:2px 0;color:var(--ink2);font-variant-numeric:tabular-nums}
+.gcard .gbr>span:nth-child(n+2){text-align:right}
+.gcard .gbr.gh5{color:var(--muted);font-size:10px;padding-bottom:3px;border-bottom:1px solid #f0f4fb;margin-bottom:2px}
+.gcard .gbl{color:var(--ink2)}
+.gcard .gbb{color:var(--ink)}
 
 </style>
 </head>
@@ -1250,7 +1259,7 @@ footer .fh{display:flex;align-items:center;gap:10px}
                 <tr>
                   <td class="cond">≥ 110%</td><td><span class="tg over">超达</span></td>
                   <td class="cond">≤ 0%</td><td><span class="tg neg">负毛利</span></td>
-                  <td class="cond">&lt; 0 天</td><td><span class="tg oos">断货</span></td>
+                  <td class="cond">≤ 0 天（平台仓无货）</td><td><span class="tg oos">断货</span></td>
                   <td class="cond">≤ 0</td><td><span class="tg oos">无库存</span></td>
                 </tr>
                 <tr>
@@ -1415,8 +1424,10 @@ const tagP = v=>{
   return                          {k:'high', t:'高毛利',   c:'high'};
 };
 const tagD = (d,invP)=>{
+  /* 平台仓库存 ≤0 即断货 —— 与 FL().oos、02「库存异常·断货」同一条件；
+     否则 d 只会 ≥0，「<0 天」这一档永远命中不了（d=0 会被算成缺货） */
+  if(invP!=null && isFinite(invP) && invP<=0) return {k:'oos', t:'断货', c:'oos'};
   if(d==null||!isFinite(d)) return (invP!=null&&invP>0)?{k:'dead',t:'无动销',c:'na'}:{k:'na',t:'无数据',c:'na'};
-  if(d<0)    return {k:'oos',  t:'断货', c:'oos'};
   if(d<=30)  return {k:'warn', t:'缺货', c:'warn'};
   if(d<70)   return {k:'ok',   t:'正常', c:'ok'};
   return            {k:'pile', t:'压货', c:'pile'};
@@ -1820,7 +1831,7 @@ const TIP_SKU={
   days:'平台仓可售天数＝Σ平台仓库存 ÷ Σ平台仓 7DMS。>70 天压货，<30 天紧张；库存 ≤0 直接判断货',
   tagR:'预测打标：≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / <80% 严重低达 / 无预测。按 SKU 的达成率分档',
   tagP:'利润率打标：≤0% 负毛利 / <8% 低毛利 / 8–13% 正常毛利 / >13% 高毛利 / 无数据。按 SKU 的业务毛利率分档',
-  tagD:'可售天数打标：断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 无动销。按平台仓可售天数分档',
+  tagD:'可售天数打标：平台仓无货＝断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 7DMS=0 且有货＝无动销。按平台仓可售天数分档',
   tagS:'库存量打标：≤0 无库存 / ≤50 低库存量 / 50–100 库存量正常 / >300 库存重点。按平台仓库存量分档（100–300 源规则未覆盖，暂归正常）'
 };
 const TIP_DIM={
@@ -2210,6 +2221,28 @@ function renderOverview(){
   const wkL=DB.weekLabels[3], wkP=DB.weekLabels[2];
   const gapTag = m.gapW==null?'':((m.gapW<0?'缺口 ':'超达 ')+nf(Math.abs(m.gapW),0)+' 件/周');
   const prTag = (m.lwPr!=null&&m.pr!=null)?('较 4 周平均 '+(m.lwPr>=m.pr?'+':'−')+nf(Math.abs((m.lwPr-m.pr)*100),1)+'pt'):'';
+  /* 三类打标分档：直接复用 02 的 tagD / tagR / tagS，保证与「打标规则表」逐档一致 */
+  const dk=r=>tagD(r.d7>0?r.invP/r.d7:null, r.invP).k;
+  const rk=r=>tagR(r.f4>0?r.q4/r.f4:null).k;
+  const DBAND=[{k:'oos',t:'断货（无货）'},{k:'warn',t:'缺货 ≤30 天'},{k:'ok',t:'正常 30–70 天'},
+               {k:'pile',t:'压货 ≥70 天'},{k:'dead',t:'无动销'}].map(function(b){
+    const rs=rows.filter(function(r){ return dk(r)===b.k; });
+    return {k:b.k, t:b.t, n:rs.length,
+      invP:rs.reduce(function(a,r){ return a+(r.invP||0); },0),
+      invS:rs.reduce(function(a,r){ return a+(r.invS||0); },0),
+      d7:rs.reduce(function(a,r){ return a+(r.d7||0); },0)};
+  });
+  const RBAND=[{k:'over',t:'超达 ≥110%'},{k:'ok',t:'达成 90–110%'},{k:'low',t:'达成偏低 80–90%'},
+               {k:'bad',t:'严重低达 &lt;80%'},{k:'na',t:'无预测'}].map(function(b){
+    return {k:b.k, t:b.t, n:rows.filter(function(r){ return rk(r)===b.k; }).length};
+  });
+  const SBAND=[{t:'≤0 无库存', p:function(r){ return (r.invP||0)<=0; }},
+               {t:'≤50 低库存量', p:function(r){ const v=r.invP||0; return v>0&&v<=50; }},
+               {t:'50–100 库存量正常', p:function(r){ const v=r.invP||0; return v>50&&v<100; }},
+               {t:'100–300 正常（未覆盖）', p:function(r){ const v=r.invP||0; return v>=100&&v<=300; }},
+               {t:'&gt;300 库存重点', p:function(r){ return (r.invP||0)>300; }}].map(function(b){
+    return {t:b.t, p:b.p, n:rows.filter(b.p).length};
+  });
   const daysTag = (m.days!=null&&pm&&pm.days!=null)
     ? ('较上一版 '+(m.days<=pm.days?'▼ ':'▲ ')+nf(Math.abs(m.days-pm.days),1)+' 天') : '';
   $('#kpis').innerHTML=`
@@ -2239,10 +2272,14 @@ function renderOverview(){
     <div class="gcard gi2">
       <div class="gh"><span class="gt">库 · 周转</span><span class="gx">${m.aliveDays==null?'':'动销口径 '+nf(m.aliveDays,0)+' 天'}</span></div>
       <div class="gm"><span class="gl">平台仓可售天数</span><span class="gn">${gv(11)}</span>${gd(11)}</div>
-      <div class="gs">
-        <div class="gi"><span>压货 &gt;70天</span><b>${drillNum(rows,'压货 >70天',pileP,nf(m.pile))}</b></div>
-        <div class="gi"><span>断货 ≤0</span><b>${drillNum(rows,'断货 平台仓≤0',oosP,nf(m.oos))}</b></div>
-        <div class="gi"><span>平台仓库存</span><b>${wan(m.invP)}</b></div>
+      <div class="gbands">
+        <div class="gbr gh5"><span>可售天数档位</span><span>SKU</span><span>平台仓</span><span>自发仓</span><span>7DMS</span></div>
+        ${DBAND.map(function(b){
+          const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+          return '<div class="gbr"><span class="gbl">'+b.t+'</span>'+
+            '<span class="gbb">'+drillNum(rows,'可售天数 '+lbl,function(r){ return dk(r)===b.k; },nf(b.n))+'</span>'+
+            '<span>'+nf(b.invP)+'</span><span>'+nf(b.invS)+'</span><span>'+nf(b.d7,0)+'</span></div>';
+        }).join('')}
       </div>
     </div>`;
 
@@ -2254,27 +2291,25 @@ function renderOverview(){
   const tgt=0.06;
   const feeTxt=(m.adp==null)?'—':(m.adp>tgt?`高于目标 ${(m.adp*100-tgt*100).toFixed(1)}pt`:`优于目标 ${(tgt*100-m.adp*100).toFixed(1)}pt`);
   const ins=[
-    /* 四档占全部 SKU（含无预测），保证四行相加＝总数；无预测不进三档是因为分母为 0 */
-    {h:'近四周最新预测达成结构',lines:[
-      `超达 ≥110% <b>${drillNum(rows,'超达 ≥110%',overP,nf(m.over))}</b> 个 · 占 ${pct(m.n?m.over/m.n:null)}`,
-      `达标 90–110% <b>${drillNum(rows,'达标 90–110%',hitP,nf(m.hit))}</b> 个 · 占 ${pct(m.n?m.hit/m.n:null)}`,
-      `未达 &lt;90% <b>${drillNum(rows,'未达 <90%',underP,nf(m.under))}</b> 个 · 占 ${pct(m.n?m.under/m.n:null)}`,
-      `无预测 <b>${drillNum(rows,'无预测（无最新版预测）',function(r){ return !(r.f4>0); },nf(m.n-tot))}</b> 个 · 占 ${pct(m.n?(m.n-tot)/m.n:null)}`
-    ],cls:''},
+    /* 按预测打标五档（与 02 规则表一致），分母＝全部 SKU，五行相加＝总数 */
+    {h:'预测达成结构（按打标五档）',lines:RBAND.map(function(b){
+      const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+      return b.t+' <b>'+drillNum(rows,'预测达成 '+lbl,function(r){ return rk(r)===b.k; },nf(b.n))+'</b> 个 · 占 '+pct(m.n?b.n/m.n:null);
+    }),cls:''},
     {h:'缺口最大 BU（周均）',lines:[
       worst?`${drillNum(rows,'BU：'+worst.k, r=>r.bu===worst.k, worst.k+' <b>'+nf(worst.gap,1)+'</b>')} 件/周`:'—',
       `全盘周均缺口 <b>${nf(m.gapW,1)}</b> 件`,
       `缺口订单 <b>${nf(m.f-m.q,0)}</b> 件`
     ],cls:(worst&&worst.gap<0)?'warn':''},
-    {h:'库存结构（平台仓口径）',lines:[
-      `断货（平台仓≤0）<b>${drillNum(rows,'断货 平台仓≤0',oosP,nf(m.oos))}</b> 个 · 占 ${pct(m.n?m.oos/m.n:null)}`,
-      `压货（&gt;70天）<b>${drillNum(rows,'压货 >70天',pileP,nf(m.pile))}</b> 个 · 占 ${pct(m.n?m.pile/m.n:null)}`,
-      `平台仓 <b>${nf(m.invP)}</b> 件 · 总库存 <b>${nf(m.inv)}</b> 件`
-    ],cls:(m.n&&m.oos/m.n>0.4)?'warn':''},
-    {h:'费比健康度',lines:[
-      `Spend% <b>${drillNum(rows,'费比 >6%',feeP,pct(m.adp))}</b>（BR 目标 6%）`,
-      `${feeTxt}`,
-      `Acos <b>${pct(m.acos)}</b>`
+    {h:'库存量结构（平台仓口径）',lines:SBAND.map(function(b){
+      const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+      return b.t+' <b>'+drillNum(rows,'库存量 '+lbl,b.p,nf(b.n))+'</b> 个 · 占 '+pct(m.n?b.n/m.n:null);
+    }),cls:''},
+    {h:'费比健康度（最新周 / 4周）',lines:[
+      `广告费比 · 最新周 <b>${pct(m.lwAd)}</b> ｜ 4周 <b>${pct(m.adp)}</b>`,
+      `仓储费比 · 最新周 <b>${pct(m.lwWh)}</b> ｜ 4周 <b>${pct(m.whp)}</b>`,
+      `Acos（4周）<b>${pct(m.acos)}</b>`,
+      `${feeTxt}（广告费比 vs BR 目标 6%）`
     ],cls:(m.adp!=null&&m.adp>tgt)?'warn':''}
   ];
   $('#insights').innerHTML=ins.map(c=>`<div class="icard ${c.cls}"><div class="ih">${c.h}</div>${c.lines.map(l=>`<div class="il">${l}</div>`).join('')}</div>`).join('');
@@ -4264,7 +4299,7 @@ function renderFoot(){
     {h:'打标阈值', items:[
       `<b>预测达成</b>：≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测。`,
       `<b>利润率</b>：≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利。`,
-      `<b>可售天数</b>：&lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b>：≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。`,
+      `<b>可售天数</b>：平台仓无货（≤0）断货 / ≤30 天缺货 / 30–70 天正常 / ≥70 天压货 / 7DMS=0 且有货无动销；<b>库存量</b>：≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。`,
       `阈值定义在 tagR / tagP / tagD / tagS 四个函数里，改一处四处同步（02 速览 · 02 分布 · 04 维度表 · SKU 明细与弹窗）；完整对照表在 02「打标规则」。`
     ]},
     {h:'各板块口径', items:[
