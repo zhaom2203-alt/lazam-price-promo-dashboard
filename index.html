@@ -1832,7 +1832,7 @@ const TIP_DIM={
   rateL1:'最新周（{WKL}）：Σ当周订单 ÷ Σ当周最新版预测。数据取自「预测达成」表逐周聚合，不是明细表百分比的平均',
   wrateL1:'最新周（{WKL}）：Σ当周订单 ÷ Σ当周加权预测。加权预测＝各渠道销量预测按占比加权，通常高于最新版预测',
   wrate4:'4周累计：Σ4周订单 ÷ Σ4周加权预测。和比口径，与「4周累计达成·最新版」只差分母（加权 vs 最新版）',
-  gap:'周均缺口＝(4周预测 − 4周订单) ÷ 4；负值表示超达',
+  gap:'周均缺口＝(Σ4周订单 − Σ4周最新版预测) ÷ 4；负值＝缺口（订单未达预测，绿色）、正值＝超达（红色）',
   pr:'4周（{WK}）收入加权业务毛利率（已扣广告/仓储）。临界 8%，达标 ≥13%',
   lwPr:'【最新周 {WKL}】单周毛利率＝该周业务毛利 ÷ 该周收入总额(审计)，组内先分别求和再相除。下方小字＝与上一周 {WKP} 的百分点变化：▲红＝好转、▼绿＝恶化',
   lwAd:'【最新周 {WKL}】单周产品营销费 ÷ 该周收入总额(审计)。小字＝与上一周 {WKP} 的百分点变化，▼绿＝费比下降（好转）',
@@ -2570,7 +2570,7 @@ function renderScene(){
   }
 
   let head='<th class="l">场景（最新）</th>'+(dim?'<th class="l">'+dimName+'</th>':'')+
-    scnCols().map(function(c){ return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
+    scnCols().map(function(c){ return '<th data-k="'+c.k+'"'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
 
   let body='';
   const colCnt=1+(dim?1:0)+scnCols().length;
@@ -2645,6 +2645,7 @@ function renderScene(){
 
   $('#sceneTable').innerHTML='<div class="tbl-wrap"><table class="dt"><thead><tr>'+head+
     '</tr></thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
+  applyColTips($('#sceneTable'), TIP_DIM);   /* 03 表头也挂口径提示，与 04 同源 */
 
   /* 事件 */
   const host=$('#sceneTable');
