@@ -1135,6 +1135,38 @@ td.lwt .lwc[title]{cursor:help}
 .cgseg b.on{background:#eaf0fe;color:#1f4bc4;font-weight:700}
 @media (max-width:1200px){.cgseg b{padding:3px 6px;font-size:10.5px}}
 
+/* ===== 03-B 场景 × 维度交叉（v58） ===== */
+.sdmat{overflow-x:auto}
+.sdmat table{border-collapse:collapse;width:100%;font-size:11.8px}
+.sdmat th,.sdmat td{border-bottom:1px solid var(--line2);padding:5px 6px;text-align:center;white-space:nowrap}
+.sdmat th{background:#f7faff;color:var(--ink2);font-weight:600;font-size:11.4px}
+.sdmat th.l,.sdmat td.l{text-align:left}
+.sdmat th[data-msc]{cursor:pointer;user-select:none}
+.sdmat th[data-msc]:hover{color:var(--accent);background:#eef4ff}
+.sdmat th i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.sdmat td.sdc{cursor:pointer}
+.sdmat td.sdc:hover{box-shadow:inset 0 0 0 1px rgba(47,91,215,.45)}
+.sdmat td.sdc.on{box-shadow:inset 0 0 0 2px var(--accent)}
+.sdmat td.sdz{color:#c3ccda}
+.sdmat .sdv{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.sdmat .sdq{color:var(--muted);font-size:10.7px;font-variant-numeric:tabular-nums}
+.sdmat td.l.sdv{cursor:pointer;max-width:190px;overflow:hidden;text-overflow:ellipsis}
+.sdmat td.l.sdv:hover{color:var(--accent)}
+.sdmat tr.sdsum td{background:#f7faff;font-weight:600;color:var(--ink)}
+.sdbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:9px 18px 6px;font-size:12.2px;color:var(--ink2)}
+.sdbar .sb1 b{color:var(--ink)}
+.sdbar .sb2{font-size:11.6px;color:var(--muted)}
+.sdbar .sbl{font-size:11.6px;color:var(--muted)}
+.sdbar select{font-family:inherit;font-size:12px;border:1px solid var(--line);border-radius:8px;
+  padding:3px 7px;background:#fff;color:var(--ink);cursor:pointer}
+.sdchip{display:inline-flex;align-items:center;gap:7px;font-size:11.6px;color:var(--accent);
+  background:var(--accent-soft);border:1px solid #d3e0fb;border-radius:7px;padding:2px 8px}
+.sdchip i{font-style:normal;cursor:pointer;color:#6b8bd0;font-weight:700}
+.sdchip i:hover{color:var(--up)}
+#sdTable table.dt{font-size:11.9px}
+#sdTable table.dt td,#sdTable table.dt th{padding:6px 8px}
+#sdNote b{color:var(--ink2)}
+
 </style>
 </head>
 <body>
@@ -1290,6 +1322,15 @@ td.lwt .lwc[title]{cursor:help}
         <div class="subhead"><span>场景 × 达成 / 毛利 / 库存</span><span class="scnctl" id="scnCtl"></span></div>
         <div id="sceneTable"></div>
         <div class="tnote" id="sceneNote"></div>
+
+        <!-- 03-B 场景 × 维度交叉 -->
+        <div class="subhead" id="sdSub">
+          <span>场景 × 维度交叉<b>每个维度值在六个场景下的全部字段</b></span>
+          <span class="scnctl" id="sdCtl"></span>
+        </div>
+        <div id="sdMatrix"></div>
+        <div id="sdTable"></div>
+        <div class="tnote" id="sdNote"></div>
       </section>
 
       <!-- 04 -->
@@ -2767,6 +2808,310 @@ function renderScene(){
 }
 
 
+/* ---------- 03-B 场景 × 维度交叉：矩阵导航 + 全字段表 ---------- */
+const SD={dim:'bu', sel:null, sort:'q', dir:-1, page:1, size:40, cg:'all', exp:false};
+const SD_DIMS=[['bu','BU'],['own','销售负责人'],['c3','三级分类'],['lst','国家Listing'],['sku','SKU']];
+
+function sdCols(){
+  const g=SD.cg;
+  if(g==='all') return SCN_COLS;
+  const w=g.split('+');
+  return SCN_COLS.filter(function(c){ return !c.g || w.indexOf(c.g)>=0; });
+}
+function sdTint(hex,a){
+  const h=String(hex).replace('#','');
+  const r=parseInt(h.substr(0,2),16), g=parseInt(h.substr(2,2),16), b=parseInt(h.substr(4,2),16);
+  const al=Math.max(0,Math.min(1,(typeof a==='number'?a:(parseFloat(a)||0))));
+  return 'rgba('+r+','+g+','+b+','+al.toFixed(2)+')';
+}
+function sdDimName(dim){ return (SD_DIMS.filter(function(x){ return x[0]===dim; })[0]||['',''])[1]; }
+function sdVal(m,k,ctx){
+  if(k==='np')   return ctx.totN?m.n/ctx.totN:null;
+  if(k==='qp')   return ctx.totQ?m.q/ctx.totQ:null;
+  if(k==='invp') return ctx.totInv?m.inv/ctx.totInv:null;
+  return m[k];
+}
+/* 维度值 × 场景 的组合；只保留真实存在的组合 */
+function sdCombos(rows,dim){
+  const by={};
+  rows.forEach(function(r){
+    const v=String((r[dim]==null||r[dim]==='')?'未分类':r[dim]);
+    const b=by[v]||(by[v]={v:v,sc:{}});
+    if(!b.sc[r.sc]) b.sc[r.sc]=[];
+    b.sc[r.sc].push(r);
+  });
+  const out=[];
+  Object.keys(by).forEach(function(v){
+    const b=by[v];
+    SC_ORDER.forEach(function(s){
+      const rs=b.sc[s]; if(!rs||!rs.length) return;
+      out.push({v:v, sc:s, rows:rs, n:rs.length, m:M(agg(rs))});
+    });
+  });
+  return out;
+}
+function sdSelLabel(){
+  const s=SD.sel; if(!s) return '';
+  return (s.v?sdDimName(SD.dim)+' '+s.v+' · ':'')+(s.sc||'全部场景');
+}
+
+function renderSceneDim(){
+  const hostM=$('#sdMatrix'), hostT=$('#sdTable');
+  if(!hostM||!hostT) return;
+  const rows=baseRows();
+  const dim=SD.dim, dimName=sdDimName(dim);
+  const combos=sdCombos(rows,dim);
+  const totQ=combos.reduce(function(s,c){ return s+c.m.q; },0);
+  const totInv=combos.reduce(function(s,c){ return s+c.m.inv; },0);
+  const ctx={totQ:totQ, totN:rows.length, totInv:totInv};
+
+  /* 顶部控件 */
+  const ctl=$('#sdCtl');
+  if(ctl){
+    ctl.innerHTML='<span class="cl">维度</span>'+
+      '<select id="sdDim">'+SD_DIMS.map(function(d){
+        return '<option value="'+d[0]+'"'+(SD.dim===d[0]?' selected':'')+'>'+d[1]+'</option>';
+      }).join('')+'</select>'+
+      '<span class="cgseg" id="sdCg">'+['all','scale','rate','profit','inv'].map(function(g){
+        const on=(g==='all')?(SD.cg==='all'):(SD.cg!=='all'&&SD.cg.split('+').indexOf(g)>=0);
+        const nm={all:'全部',scale:'规模',rate:'达成',profit:'利润',inv:'库存'}[g];
+        return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
+      }).join('')+'</span>'+
+      '<span class="scnbtn" id="sdExp">导出 CSV</span>';
+    ctl.querySelectorAll('#sdCg [data-cgv]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        const v=b.dataset.cgv;
+        if(v==='all'){ SD.cg='all'; }
+        else{
+          let cur=(SD.cg==='all')?[]:SD.cg.split('+');
+          if(cur.indexOf(v)>=0) cur=cur.filter(function(x){ return x!==v; });
+          else cur.push(v);
+          SD.cg=cur.length?cur.join('+'):'all';
+        }
+        renderSceneDim();
+      };
+    });
+    const sel=$('#sdDim');
+    if(sel) sel.onchange=function(){ SD.dim=sel.value; SD.sel=null; SD.page=1; SD.exp=false; renderSceneDim(); };
+    const ex=$('#sdExp');
+    if(ex) ex.onclick=function(){ exportSceneDim(); };
+  }
+
+  if(!combos.length){
+    hostM.innerHTML='<div class="empty">当前筛选范围内无数据</div>';
+    hostT.innerHTML='';
+    $('#sdNote').innerHTML='';
+    return;
+  }
+
+  /* ===== 矩阵 ===== */
+  const byv={};
+  combos.forEach(function(c){
+    const r=byv[c.v]||(byv[c.v]={v:c.v,q:0,n:0,sc:{}});
+    r.q+=c.m.q; r.n+=c.n; r.sc[c.sc]=c;
+  });
+  const vals=Object.keys(byv).map(function(k){ return byv[k]; })
+    .sort(function(a,b){ return b.q-a.q; });
+  const LIM=(dim==='bu'||dim==='own')?9999:14;
+  const shown=SD.exp?vals:vals.slice(0,LIM);
+  const maxN=combos.reduce(function(s,c){ return Math.max(s,c.n); },1);
+  const scSum={};
+  combos.forEach(function(c){
+    const t=scSum[c.sc]||(scSum[c.sc]={n:0,q:0});
+    t.n+=c.n; t.q+=c.m.q;
+  });
+  const selOn=function(v,s){
+    return !!(SD.sel && (!SD.sel.v||SD.sel.v===v) && (!SD.sel.sc||SD.sel.sc===s));
+  };
+
+  let mh='<div class="tbl-wrap sdmat"><table><thead><tr>'+
+    '<th class="l" style="min-width:120px">'+dimName+'</th>'+
+    SC_ORDER.map(function(s){
+      return '<th data-msc="'+s+'" title="只看「'+s+'」这个场景"><i style="background:'+scColor(s)+'"></i>'+s+'</th>';
+    }).join('')+
+    '<th>合计</th></tr></thead><tbody>';
+  shown.forEach(function(r){
+    mh+='<tr><td class="l sdv" data-mv="'+ESCA(r.v)+'" title="只看 '+ESCA(r.v)+' 的全部场景">'+ESCA(r.v)+'</td>';
+    SC_ORDER.forEach(function(s){
+      const c=r.sc[s];
+      if(!c){ mh+='<td class="sdz">—</td>'; return; }
+      const a=0.07+0.26*(c.n/maxN);
+      mh+='<td class="sdc'+(selOn(r.v,s)?' on':'')+'" data-mv="'+ESCA(r.v)+'" data-msc="'+s+'" '+
+          'style="background:'+sdTint(scColor(s),a)+'" title="'+ESCA(r.v)+' × '+s+'：'+c.n+' 个 SKU · 4周订单 '+nf(c.m.q)+' · 点击看该组合全部字段">'+
+          '<span class="sdv">'+c.n+'</span><span class="sdq"> · '+nf(c.m.q)+'</span></td>';
+    });
+    mh+='<td><span class="sdv">'+r.n+'</span><span class="sdq"> · '+nf(r.q)+'</span></td></tr>';
+  });
+  mh+='<tr class="sdsum"><td class="l">合计</td>'+
+    SC_ORDER.map(function(s){
+      const t=scSum[s];
+      return '<td>'+(t?'<span class="sdv">'+t.n+'</span><span class="sdq"> · '+nf(t.q)+'</span>':'—')+'</td>';
+    }).join('')+
+    '<td><span class="sdv">'+rows.length+'</span><span class="sdq"> · '+nf(totQ)+'</span></td></tr>';
+  mh+='</tbody></table></div>';
+  if(vals.length>(shown.length)){
+    mh+='<div class="more-row"><button id="sdMore">展开其余 '+(vals.length-shown.length)+' 项 '+dimName+'</button></div>';
+  }else if(SD.exp && vals.length>LIM){
+    mh+='<div class="more-row"><button id="sdMore">收起</button></div>';
+  }
+  hostM.innerHTML=mh;
+
+  hostM.querySelectorAll('[data-mv][data-msc]').forEach(function(td){
+    td.onclick=function(){
+      const v=td.dataset.mv, s=td.dataset.msc;
+      SD.sel=(selOn(v,s)&&SD.sel&&SD.sel.v===v&&SD.sel.sc===s)?null:{v:v,sc:s};
+      SD.page=1; renderSceneDim();
+    };
+  });
+  hostM.querySelectorAll('td.sdv[data-mv]').forEach(function(td){
+    td.onclick=function(){
+      const v=td.dataset.mv;
+      SD.sel=(SD.sel&&SD.sel.v===v&&!SD.sel.sc)?null:{v:v,sc:null};
+      SD.page=1; renderSceneDim();
+    };
+  });
+  hostM.querySelectorAll('th[data-msc]').forEach(function(th){
+    th.onclick=function(){
+      const s=th.dataset.msc;
+      SD.sel=(SD.sel&&!SD.sel.v&&SD.sel.sc===s)?null:{v:null,sc:s};
+      SD.page=1; renderSceneDim();
+    };
+  });
+  const more=$('#sdMore');
+  if(more) more.onclick=function(){ SD.exp=!SD.exp; renderSceneDim(); };
+
+  /* ===== 全字段表 ===== */
+  let list=combos;
+  if(SD.sel){
+    list=list.filter(function(c){
+      return (!SD.sel.v||c.v===SD.sel.v)&&(!SD.sel.sc||c.sc===SD.sel.sc);
+    });
+  }
+  const key=SD.sort, dir=SD.dir;
+  list=list.slice().sort(function(a,b){
+    let x,y;
+    if(key==='v'){ x=a.v; y=b.v; }
+    else if(key==='sc'){ x=SC_ORDER.indexOf(a.sc); y=SC_ORDER.indexOf(b.sc); }
+    else { x=sdVal(a.m,key,ctx); y=sdVal(b.m,key,ctx); }
+    const xv=(x==null||x!==x), yv=(y==null||y!==y);
+    if(xv&&yv) return 0;
+    if(xv) return 1;
+    if(yv) return -1;
+    if(typeof x==='string') return String(x).localeCompare(String(y))*dir;
+    return (x-y)*dir;
+  });
+
+  const cols=sdCols();
+  const total=list.length;
+  const size=SD.size>0?SD.size:total||1;
+  const pages=Math.max(1,Math.ceil(total/size));
+  if(SD.page>pages) SD.page=pages;
+  const view=list.slice((SD.page-1)*size,SD.page*size);
+  const tot=list.length?M(agg(list.reduce(function(a,c){ return a.concat(c.rows); },[]))):null;
+  const ar=function(k){ return SD.sort===k?'<span class="sk">'+(SD.dir<0?'▼':'▲')+'</span>':''; };
+  const sortCls=function(k){ return SD.sort===k?' sorted':''; };
+  const noSort={np:1,qp:1,invp:1,tagR:1,tagP:1,tagD:1};
+
+  let th='<div class="sdbar"><span class="sb1">共 <b>'+nf(total)+'</b> 行 · 第 <b>'+SD.page+' / '+pages+'</b> 页</span>'+
+    (SD.sel?'<span class="sdchip">'+ESCA(sdSelLabel())+'<i id="sdClear" title="取消筛选，显示全部组合">✕</i></span>'
+           :'<span class="sb2">点矩阵格子只看一个组合 · 点行标题看该维度值全部场景 · 点场景表头看该场景全部维度</span>')+
+    '<span style="flex:1"></span><label class="sbl">每页</label>'+
+    '<select id="sdSize">'+[40,100,200].map(function(v){
+      return '<option value="'+v+'"'+(SD.size===v?' selected':'')+'>'+v+'</option>';
+    }).join('')+'<option value="0"'+(SD.size===0?' selected':'')+'>全部</option></select></div>';
+
+  let h=th+'<div class="tbl-wrap"><table class="dt"><thead><tr>'+
+    '<th class="l sortable'+sortCls('v')+'" data-sdk="v">'+dimName+ar('v')+'</th>'+
+    '<th class="l sortable'+sortCls('sc')+'" data-sdk="sc">场景'+ar('sc')+'</th>'+
+    cols.map(function(c){
+      if(noSort[c.k]) return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>';
+      return '<th class="sortable'+sortCls(c.k)+'" data-sdk="'+c.k+'">'+c.t+ar(c.k)+'</th>';
+    }).join('')+'</tr></thead><tbody>';
+
+  view.forEach(function(c){
+    h+='<tr data-v="'+ESCA(c.v)+'" data-msc="'+c.sc+'">'+
+      '<td class="l nm" style="max-width:170px" title="'+ESCA(c.v)+'">'+ESCA(c.v)+'</td>'+
+      '<td class="l"><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+scColor(c.sc)+';margin-right:5px"></span>'+c.sc+'</td>'+
+      cols.map(function(cc){ return scnCell(cc,c.m,ctx,function(v){ return v; }); }).join('')+'</tr>';
+  });
+  if(!view.length){
+    h+='<tr><td colspan="'+(cols.length+2)+'" style="padding:26px;text-align:center;color:var(--muted)">该组合下没有数据</td></tr>';
+  }
+  h+='</tbody>';
+  if(tot){
+    h+='<tfoot><tr><td class="l">合计</td><td class="l">'+
+      (SD.sel?ESCA(sdSelLabel()):'全部组合')+'</td>'+
+      cols.map(function(c){ return scnCell(c,tot,ctx,function(v){ return v; }); }).join('')+'</tr></tfoot>';
+  }
+  h+='</table></div>';
+
+  if(total){
+    h+='<div class="more-row"><button id="sdPrev"'+(SD.page<=1?' disabled style="opacity:.4"':'')+'>上一页</button>'+
+      '<span style="align-self:center;font-size:12.5px;color:var(--muted);margin:0 8px">'+SD.page+' / '+pages+'</span>'+
+      '<button id="sdNext"'+(SD.page>=pages?' disabled style="opacity:.4"':'')+'>下一页</button></div>';
+  }
+  hostT.innerHTML=h;
+
+  hostT.querySelectorAll('th.sortable[data-sdk]').forEach(function(t){
+    t.onclick=function(){
+      const k=t.dataset.sdk;
+      if(SD.sort===k) SD.dir=(SD.dir===1?-1:1);
+      else { SD.sort=k; SD.dir=-1; }
+      SD.page=1; renderSceneDim();
+    };
+  });
+  hostT.querySelectorAll('tbody tr[data-v]').forEach(function(tr){
+    tr.style.cursor='pointer';
+    tr.onclick=function(){
+      const v=tr.dataset.v, s=tr.dataset.msc;
+      openSkuList(dimName+' '+v+' · '+s, combos.filter(function(c){ return c.v===v&&c.sc===s; })[0].rows);
+    };
+  });
+  const clr=$('#sdClear');
+  if(clr) clr.onclick=function(){ SD.sel=null; SD.page=1; renderSceneDim(); };
+  const sz=$('#sdSize');
+  if(sz) sz.onchange=function(){ SD.size=+sz.value; SD.page=1; renderSceneDim(); };
+  const pv=$('#sdPrev'), nx=$('#sdNext');
+  if(pv) pv.onclick=function(){ if(SD.page>1){ SD.page--; renderSceneDim(); } };
+  if(nx) nx.onclick=function(){ if(SD.page<pages){ SD.page++; renderSceneDim(); } };
+
+  $('#sdNote').innerHTML='交叉表把「'+dimName+' × 六个场景」逐组合展开：一行一个组合，列与上方场景表同一套字段（当前 '+cols.length+' 列）。'+
+    '场景口径仍取明细表「场景类型-最新」；合计行＝当前筛选范围内这些组合的 Σ分子 ÷ Σ分母，与上方场景表逐位对齐。'+
+    (SD.sel?'<b>当前只显示「'+ESCA(sdSelLabel())+'」</b>，点标签上的 ✕ 恢复全部。':'点击矩阵里的格子可只留一个组合。')+
+    '点表格行 → 弹窗看这批 SKU 的全字段明细；导出跟随当前筛选与列分组。';
+}
+
+/* 03-B 导出：与表格同列、同口径 */
+function exportSceneDim(){
+  const rows=baseRows();
+  const dim=SD.dim;
+  const combos=sdCombos(rows,dim);
+  const totQ=combos.reduce(function(s,c){ return s+c.m.q; },0);
+  const totInv=combos.reduce(function(s,c){ return s+c.m.inv; },0);
+  const ctx={totQ:totQ, totN:rows.length, totInv:totInv};
+  let list=combos;
+  if(SD.sel){
+    list=list.filter(function(c){
+      return (!SD.sel.v||c.v===SD.sel.v)&&(!SD.sel.sc||c.sc===SD.sel.sc);
+    });
+  }
+  if(!list.length) return;
+  const cols=sdCols();
+  const head=[sdDimName(dim),'场景'].concat(cols.map(function(c){ return c.t; }));
+  const lines=[head.map(csvCell).join(',')];
+  list.forEach(function(c){
+    const row=[c.v,c.sc];
+    cols.forEach(function(cc){ row.push(scnTxt(cc.k,c.m,ctx)); });
+    lines.push(row.map(csvCell).join(','));
+  });
+  const tot=M(agg(list.reduce(function(a,c){ return a.concat(c.rows); },[])));
+  const fr=['合计',SD.sel?sdSelLabel():'全部组合'];
+  cols.forEach(function(cc){ fr.push(scnTxt(cc.k,tot,ctx)); });
+  lines.push(fr.map(csvCell).join(','));
+  downloadCsv(lines,'场景×'+sdDimName(dim)+'_'+DB.version+'.csv');
+}
+
 /* ---------- 02 核心异常 ---------- */
 const TH={over:1.10, low:0.90, prGood:0.13, prMid:0.08, dOOS:30, dPile:70, matQ:10, bigQ:28};
 
@@ -3998,6 +4343,7 @@ function renderFoot(){
   <div><b>平台仓可售天数</b>＝Σ平台仓可销售展示库存 ÷ Σ平台仓 7DMS（不含自发仓）；<b>断货</b>＝平台仓库存 ≤0；<b>压货</b>＝平台仓可售天数 &gt;70 天或 M1-M2 连续重度压货；<b>总库存</b>＝平台仓 + 自发仓。</div>
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
   <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
+  <div><b>03 场景 × 维度交叉</b>：矩阵行是维度值（BU / 销售负责人 / 三级分类 / 国家Listing / SKU），列是六个场景，格内 <b>SKU 数 · 4周订单</b>，底色深浅按该格 SKU 数在本场景内归一（同色系＝同一场景）。下方「全字段表」一行 = 一个「维度值 × 场景」组合，列与上方场景表同一套（24 列，可分组），合计行与上方场景表逐位对齐。<b>点格子</b>＝只看该组合，<b>点维度值</b>＝只看该维度值的全部场景，<b>点场景表头</b>＝只看该场景，标签上的 ✕ 取消；<b>点表格行</b>弹窗看这批 SKU 的全字段明细。导出跟随当前筛选与列分组；维度值超过 14 项时矩阵默认只列前 14（按订单降序），点「展开其余」看全部。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
@@ -4011,7 +4357,7 @@ function renderFoot(){
 /* ---------- 启动 ---------- */
 function renderAll(){
   AF=[];
-  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderDims();
+  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims();
 }
 let kwTimer=null;
 function boot(){
