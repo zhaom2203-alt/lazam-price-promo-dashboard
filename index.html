@@ -1424,7 +1424,7 @@ section.block{scroll-margin-top:76px}
 /* ===== v74：图表数值标签（柱线合一） ===== */
 .blab{font-size:9.8px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.1px}
 .rlab{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
-.rrow{font-size:9.8px;font-weight:700;font-variant-numeric:tabular-nums}
+.rrow{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.1px}
 
 /* ===== v74：顶栏——数据源/范围/生成 一律两行（小标签 + 数值） ===== */
 .apphead{gap:18px;padding:8px 20px}
@@ -2941,12 +2941,13 @@ function renderTrend(m){
   const bw=Math.min(32, bandW*0.33), gapB=2;
   const gw=3*bw+2*gapB;
   /* 柱顶数值：柱够高就写在柱内，矮了写到柱上方 */
-  function barLab(v,cx,top,h,inColor,outColor,dark){
+  /* dy：数字距柱顶的距离，可下移以避开折线节点 */
+  function barLab(v,cx,top,h,inColor,outColor,dark,dy){
     if(!v) return '';
     const txt=nf(v,0);
-    const halo=dark?'':' stroke="#fff" stroke-width="3.4" paint-order="stroke" stroke-linejoin="round"';
+    const halo=dark?'':' stroke="#fff" stroke-width="4.2" paint-order="stroke" stroke-linejoin="round"';
     return (h>=26)
-      ? `<text x="${cx}" y="${top+13}" text-anchor="middle" class="blab" fill="${inColor}"${halo}>${txt}</text>`
+      ? `<text x="${cx}" y="${top+(dy||13)}" text-anchor="middle" class="blab" fill="${inColor}"${halo}>${txt}</text>`
       : `<text x="${cx}" y="${top-5}" text-anchor="middle" class="blab" fill="${outColor}"${halo}>${txt}</text>`;
   }
   let bars='', blabs='', xl='', hit='';
@@ -2956,19 +2957,21 @@ function renderTrend(m){
     bars+=`<rect x="${bx}" y="${plotB-hq}" width="${bw}" height="${hq}" rx="4" fill="url(#gA)"/>`;
     blabs+=barLab(d.q, bx+bw/2, plotB-hq, hq, '#fff', '#1f4bc4', true);
     const hf=Math.max(1.5, d.f/mxQ*plotH);
-    bars+=`<rect x="${bx+bw+gapB}" y="${plotB-hf}" width="${bw}" height="${hf}" rx="4" fill="#A8BDE3"/>`;
-    blabs+=barLab(d.f, bx+bw+gapB+bw/2, plotB-hf, hf, '#33507F', '#4A6693', false);
+    bars+=`<rect x="${bx+bw+gapB}" y="${plotB-hf}" width="${bw}" height="${hf}" rx="4" fill="#9FB6DD"/>`;
+    /* 达成率节点若贴近这根柱的顶，就把数字往下挪一档，免得被圆点压住 */
+    const nearF=Math.abs(hf-(d.rt||0)/mxR*plotH)<14 || Math.abs(hf-(d.wrt||0)/mxR*plotH)<14;
+    blabs+=barLab(d.f, bx+bw+gapB+bw/2, plotB-hf, hf, '#2F4A78', '#3F5C8C', false, nearF?27:13);
     if(d.wf>0){
       const hw2=Math.max(1.5, d.wf/mxQ*plotH);
-      bars+=`<rect x="${bx+2*(bw+gapB)}" y="${plotB-hw2}" width="${bw}" height="${hw2}" rx="4" fill="#C9D5EA"/>`;
-      blabs+=barLab(d.wf, bx+2*(bw+gapB)+bw/2, plotB-hw2, hw2, '#5A6C8C', '#78879F', false);
+      bars+=`<rect x="${bx+2*(bw+gapB)}" y="${plotB-hw2}" width="${bw}" height="${hw2}" rx="4" fill="#C3B8E0"/>`;
+      blabs+=barLab(d.wf, bx+2*(bw+gapB)+bw/2, plotB-hw2, hw2, '#5A4A86', '#6E5D9B', false);
     }
     xl+=`<text x="${x(i)}" y="${plotB+19}" text-anchor="middle" class="axis-lbl">${d.L}</text>`;
     /* 达成率写在周标签下一行：橙＝预测达成、绿＝加权达成，避免压在柱子上 */
     xl+=`<text x="${x(i)}" y="${plotB+37}" text-anchor="middle" class="rrow">`+
-      (d.rt==null?'<tspan fill="#B9C2D2">—</tspan>':'<tspan fill="#D9962A">'+nf(d.rt*100,1)+'%</tspan>')+
-      '<tspan fill="#CBD3DF"> · </tspan>'+
-      (d.wrt==null?'<tspan fill="#B9C2D2">—</tspan>':'<tspan fill="#4E9B84">'+nf(d.wrt*100,1)+'%</tspan>')+
+      (d.rt==null?'<tspan fill="#B9C2D2">—</tspan>':'<tspan fill="#C07E12">'+nf(d.rt*100,1)+'%</tspan>')+
+      '<tspan fill="#C3CBD8"> / </tspan>'+
+      (d.wrt==null?'<tspan fill="#B9C2D2">—</tspan>':'<tspan fill="#2F7E67">'+nf(d.wrt*100,1)+'%</tspan>')+
       '</text>';
     hit+=`<rect class="chit" pointer-events="all" data-i="${i}" x="${P.l+bandW*i}" y="${plotT}" width="${bandW}" height="${plotB-plotT}" fill="transparent"/>`+
          `<line class="cx" pointer-events="none" data-i="${i}" x1="${x(i)}" y1="${plotT}" x2="${x(i)}" y2="${plotB}" stroke="#A9B5C9" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>`;
@@ -2981,11 +2984,11 @@ function renderTrend(m){
       if(v==null) return;
       const py=yR(v);
       pts.push(x(i)+','+py);
-      dots.push(`<circle cx="${x(i)}" cy="${py}" r="4" fill="${color}" stroke="#fff" stroke-width="2"/>`);
+      dots.push(`<circle cx="${x(i)}" cy="${py}" r="4.4" fill="${color}" stroke="#fff" stroke-width="2.2"/>`);
       /* 数值统一写在底部那行，点上不再叠标签（会和柱内数字打架） */
     });
     if(!pts.length) return '';
-    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5 3"/>`+dots.join('')+labs.join('');
+    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`+dots.join('')+labs.join('');
   }
 
   const svgA=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="周度订单、预测与达成率">
@@ -3005,10 +3008,10 @@ function renderTrend(m){
       ['预测达成',pct(d.rt)],['加权达成',d.wrt==null?'—':pct(d.wrt)]]};
   });
   const legendA='<span><i class="lgb"></i>订单量</span>'+
-    '<span><i class="lgb" style="background:#A8BDE3"></i>预测量</span>'+
-    '<span><i class="lgb" style="background:#C9D5EA"></i>加权预测量</span>'+
-    '<span><i class="lgd" style="border-color:#E0A52C;border-top-style:dashed"></i>预测达成</span>'+
-    '<span><i class="lgd" style="border-color:#4E9B84;border-top-style:dashed"></i>加权达成</span>';
+    '<span><i class="lgb" style="background:#9FB6DD"></i>预测量</span>'+
+    '<span><i class="lgb" style="background:#C3B8E0"></i>加权预测量</span>'+
+    '<span><i class="lgd" style="border-color:#E0A52C;border-top-style:solid"></i>预测达成</span>'+
+    '<span><i class="lgd" style="border-color:#4E9B84;border-top-style:solid"></i>加权达成</span>';
 
   /* ---------- 月度 ---------- */
   const mth=m.mth||[], W2=760, H2=352, P2={l:56,r:30,t:38,b:46};
