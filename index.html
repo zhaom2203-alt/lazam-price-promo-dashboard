@@ -1076,6 +1076,12 @@ td.lwt .lwc[title]{cursor:help}
 .gcard .gx.up{color:#b3271f}
 .gcard .gx.down{color:#17794f}
 .gcard .gm{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+/* 双主指标（最新周 + 4周累计）：两列并排，字号略收 */
+.gcard .gm.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:end}
+.gcard .gm.two .gmi{display:flex;flex-direction:column;gap:1px;min-width:0}
+.gcard .gm.two .gl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcard .gm.two .gn{font-size:23px}
+@media (max-width:1320px){.gcard .gm.two{grid-template-columns:1fr;gap:6px}.gcard .gm.two .gn{font-size:22px}}
 .gcard .gl{font-size:11px;color:var(--muted)}
 .gcard .gn{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.1}
 .gcard .gm i,.gcard .gi i{font-style:normal;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -2132,7 +2138,6 @@ function renderOverview(){
   const oosP  =r=>FL(r).oos;
   $('#s1scope').textContent=`${nf(m.n)} 个 SKU`;
   $('#s1meta').innerHTML=[
-    `<span class="mtag">4周订单 <b>${nf(m.q)}</b></span>`,
     `<span class="mtag">最新版预测 <b>${nf(m.f,0)}</b></span>`,
     `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`
   ].join('');
@@ -2188,6 +2193,11 @@ function renderOverview(){
   /* v56：按「量 / 利 / 库」归并成 3 张组合卡，12 个数字全部保留且仍可点开弹窗 */
   const gv=i=>k[i].drill?drillNum(rows,k[i].drill[0],k[i].drill[1],k[i].v):k[i].v;
   const gd=i=>miniD(P,CMP[i]);
+  /* 最新周订单：分子＝该周订单件数，环比走「同一快照的上一周」，与 4周累计的口径（上一版快照）区分 */
+  const lwQ=(m.qw&&m.qw.length===4)?m.qw[3]:null;
+  const pwQ=(m.qw&&m.qw.length===4)?m.qw[2]:null;
+  const gvW=(lwQ==null)?'—':drillNum(rows,'最新周订单 >0',function(r){ return r.qw&&r.qw[3]>0; },nf(lwQ));
+  const gdW=miniD(P,{cur:lwQ,prev:pwQ,kind:'wpct',dir:1});
   const wkL=DB.weekLabels[3], wkP=DB.weekLabels[2];
   const gapTag = m.gapW==null?'':((m.gapW<0?'缺口 ':'超达 ')+nf(Math.abs(m.gapW),0)+' 件/周');
   const prTag = (m.lwPr!=null&&m.pr!=null)?('较 4 周平均 '+(m.lwPr>=m.pr?'+':'−')+nf(Math.abs((m.lwPr-m.pr)*100),1)+'pt'):'';
@@ -2196,7 +2206,10 @@ function renderOverview(){
   $('#kpis').innerHTML=`
     <div class="gcard gq">
       <div class="gh"><span class="gt">量 · 达成</span><span class="gx ${m.gapW<0?'down':'up'}">${gapTag}</span></div>
-      <div class="gm"><span class="gl">4周订单</span><span class="gn">${gv(1)}</span>${gd(1)}</div>
+      <div class="gm two">
+        <div class="gmi"><span class="gl">最新周订单（${wkL}）</span><span class="gn">${gvW}</span>${gdW}</div>
+        <div class="gmi"><span class="gl">4周累计订单</span><span class="gn">${gv(1)}</span>${gd(1)}</div>
+      </div>
       <div class="gs">
         <div class="gi"><span>4周达成</span><b>${gv(2)}</b>${gd(2)}</div>
         <div class="gi"><span>最新周</span><b>${gv(3)}</b>${gd(3)}</div>
@@ -3519,11 +3532,12 @@ function miniD(P, t){
   if(t.kind==='pt'||t.kind==='week'){ chg=(cur-prev)*100; txt=Math.abs(chg).toFixed(1)+'pt'; }
   else if(t.kind==='day'){ chg=cur-prev; txt=Math.abs(chg).toFixed(1)+' 天'; }
   else if(t.kind==='pct'){ if(!(prev>0)) return '<i class="flat">—</i>'; chg=(cur/prev-1)*100; txt=Math.abs(chg).toFixed(1)+'%'; }
+  else if(t.kind==='wpct'){ if(!(prev>0)) return '<i class="flat">—</i>'; chg=(cur/prev-1)*100; txt=Math.abs(chg).toFixed(1)+'%'; }
   else { chg=cur-prev; txt=nf(Math.abs(chg),0); }
   const flat=Math.abs(chg)<0.05;
   let cls='flat';
   if(!flat && t.dir) cls=((chg>0?1:-1)===t.dir)?'up':'down';
-  const base = t.kind==='week' ? ('上一周 '+DB.weekLabels[2]) : ('上一版 '+(P?P.key:''));
+  const base = (t.kind==='week'||t.kind==='wpct') ? ('上一周 '+DB.weekLabels[2]) : ('上一版 '+(P?P.key:''));
   const body = flat?'持平':(chg>0?'▲ ':'▼ ')+txt;
   return '<i class="'+cls+'" title="对比'+base+'">'+body+'</i>';
 }
@@ -4233,7 +4247,7 @@ function renderFoot(){
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
   <div><b>异常下钻</b>：<b>01 KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
-  <div><b>01 概况的三张卡</b>：<b>量 / 利 / 库</b> 按主题归并，卡内每个数字都可点开弹窗；主指标下方是<b>环比</b>（量、库与上一版快照比，利的三项与上周比，见卡内小字 title）。四张洞察卡常显、不再折叠。01 只留数字：不带诊断句、卡底结论句、口径提示条——口径统一写在下方「01 概况的口径细节」，本期结论看 02 核心异常监控。</div>
+  <div><b>01 概况的三张卡</b>：<b>量 / 利 / 库</b> 按主题归并，卡内每个数字都可点开弹窗。<b>量·达成</b>给两个主指标——<b>最新周订单</b>（环比上一周，同一快照内比）与<b>4周累计订单</b>（环比上一版快照），下面三格是 4周达成 / 最新周达成 / 加权达成；<b>利</b>的主值是本周利润率（环比上一周），五格是 4周毛利与广告 / 仓储的新旧对比；<b>库</b>的主值是可售天数（环比上一版），三格是压货 / 断货 / 平台仓库存。四张洞察卡常显、不再折叠。01 只留数字：不带诊断句、卡底结论句、口径提示条——口径统一写在下方「01 概况的口径细节」，本期结论看 02 核心异常监控。</div>
   <div><b>表格列分组</b>（03 场景表、04 维度层）：工具条上的 <b>全部 / 规模 / 达成 / 利润 / 库存</b> 可多选，只显示对应列，<b>导出跟随当前选择</b>；04 默认「达成 + 利润」（17 列），要看订单量点「规模」、要看库存点「库存」。</div>
   <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
   <div><b>数据范围</b>：仅巴西站亚马逊（BR · AMZ），已剔除多渠道与墨西哥站数据；业务组 / SKU状态 / 场景 / 搜索为全局筛选；「02 各异常点」点击只弹窗、不改变全局范围；「04 维度下钻」为逐级下钻，三者叠加生效。页面所有数字均为当前范围的实时重算结果，非静态快照。</div>`;
