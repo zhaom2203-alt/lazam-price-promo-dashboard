@@ -528,22 +528,6 @@ table.dt td.adv{white-space:normal;max-width:330px;font-size:11.8px;line-height:
 .tabb.layer{background:#f7f9fd;border-color:var(--line2);color:var(--muted);font-size:12px;padding:5px 11px}
 .tabb.layer.on{background:#eaf0fe;border-color:#cfdcfb;color:var(--accent);font-weight:600;box-shadow:none}
 .dotsq{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:middle;margin-right:7px}
-.warnline{display:flex;gap:16px;flex-wrap:wrap;align-items:baseline;margin:2px 16px 4px;padding:8px 12px;
-  background:#fdf8ec;border:1px solid #f3e4c4;border-radius:10px;font-size:11.8px;color:#8a6a1e;line-height:1.6}
-.warnline b{color:#6b4f10}
-.warnline span{color:#8a6a1e}
-.warnline span b{color:#6b4f10}
-
-.diagbar{display:flex;align-items:stretch;margin:12px 16px 2px;border:1px solid #f0e2c4;
-  background:#fffdf6;border-radius:11px;overflow:hidden}
-.diagbar .dgl{flex:0 0 auto;display:flex;align-items:center;padding:8px 14px;font-size:11.5px;font-weight:700;
-  color:#8a6a1e;background:#fdf6e7;border-right:1px solid #f3e6c9;letter-spacing:1px}
-.diagbar .dgt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;padding:7px 14px 8px}
-.diagbar .f{font-size:11.9px;color:#8a6a1e;line-height:1.6}
-.diagbar .f b{color:#6b4f10;font-weight:700;font-variant-numeric:tabular-nums;font-size:12.2px}
-.diagbar .f .sp2{font-style:normal;color:#d9c79c;margin:0 3px}
-.diagbar .j{font-size:12.4px;color:#7a5c14;line-height:1.65}
-.diagbar .j b{color:#b3271f;font-weight:700}
 .doclinks{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding-top:10px;
   border-top:1px dashed var(--line);font-size:12.3px}
 .doclinks b{font-size:12.5px;font-weight:700;color:var(--ink2)}
@@ -741,14 +725,6 @@ body{font-size:13.5px;color:var(--ink)}
 .kpi.tone-up .v{color:#c0392b}
 .kpi.tone-down .v{color:#127a52}
 .kpi.tone-warn .v{color:#b0740f}
-
-/* --- 4. 诊断条：从"黄色便签"升级为带图标的强调块 --- */
-.diagbar{margin:12px 16px 4px;border-radius:12px;border:1px solid #f0dfba;
-  background:linear-gradient(90deg,#fffbf1,#fffdf9 70%,#fff)}
-.diagbar .dgl{background:#fbefd4;color:#8a5f0a;font-size:11px;font-weight:700;letter-spacing:.4px;
-  border-radius:11px 0 0 11px;padding:9px 13px}
-.diagbar .f{font-size:12px;color:#7e6320;line-height:1.65}
-.diagbar .f b{font-size:12.5px;color:#6b4f10}
 
 /* --- 5. 表格：表头更实、行高统一、偶数行微底，便于横向追踪 --- */
 table.dt thead th{background:#f3f7fd;color:#4a5b78;font-size:11px;letter-spacing:.2px;padding:8px 9px}
@@ -1114,17 +1090,8 @@ td.lwt .lwc[title]{cursor:help}
 .gcard .gi{display:flex;flex-direction:column;gap:1px;min-width:0}
 .gcard .gi span{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gcard .gi b{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
-.gcard .gf{font-size:10.5px;color:#7d8aa2;line-height:1.5;padding-top:8px;border-top:1px dashed #eef3fa}
 @media (max-width:1100px){.gcard .gs.five{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-/* 洞察折叠条 */
-.insbar{display:flex;align-items:center;gap:10px;margin:0 16px;padding:7px 12px;
-  border:1px solid var(--line);border-radius:10px;background:#fbfcfe;font-size:11.5px;color:var(--muted)}
-.insbar .ibt{font-weight:700;color:var(--ink2)}
-.insbar .ibs b{color:var(--ink);font-weight:700}
-.insbar .ibk{margin-left:auto;color:#2f5bd7;font-weight:600;cursor:pointer;white-space:nowrap}
-.insbar .ibk:hover{text-decoration:underline}
-.insights[data-collapsed="1"]{display:none}
 
 /* ---------- 04 维度层：列分组开关（v56） ---------- */
 .cgseg{display:inline-flex;align-items:center;border:1px solid #dbe4f4;border-radius:7px;overflow:hidden;background:#fff}
