@@ -1218,11 +1218,8 @@ td.lwt .lwc[title]{cursor:help}
           <div class="btitle"><span class="bnum">01</span><h2>整体达成概况</h2><span class="cnt" id="s1scope"></span></div>
           <div class="bmeta" id="s1meta"></div>
         </div>
-        <div class="diagbar" id="diagBar"></div>
         <div class="g3" id="kpis"></div>
-        <div class="warnline" id="kpiWarn"></div>
-        <div class="insbar" id="insBar"><span class="ibt">洞察</span><span class="ibs" id="insSum"></span><span class="ibk" id="insBtn">展开 4 条</span></div>
-        <div class="insights" id="insights" data-collapsed="1"></div>
+        <div class="insights" id="insights"></div>
         <div class="subhead"><span>业务组表现 <b>当前筛选范围</b></span></div>
         <div class="sites-grid" id="siteCards"></div>
         <div class="subhead noline"><span>周度趋势 <b id="wkRange">W39–W42</b></span><i class="sp"></i>
@@ -2176,9 +2173,7 @@ function renderOverview(){
   $('#s1meta').innerHTML=[
     `<span class="mtag">4周订单 <b>${nf(m.q)}</b></span>`,
     `<span class="mtag">最新版预测 <b>${nf(m.f,0)}</b></span>`,
-    `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`,
-    `<span class="mtag">环比基准 <b>${P?P.key:'—'}</b>${P?'（'+P.wk+'）':'（首版）'}</span>`,
-    `<span class="mtag">带<span style="border-bottom:1px dashed #9fb6e6">虚线的数字</span>可点击 → 弹窗看这批 SKU</span>`
+    `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`
   ].join('');
 
   /* tone：语义色条 —— up＝红（超达/断货等强信号）｜down＝绿（未达/亏损）｜warn＝琥珀（费比/压货） */
@@ -2233,19 +2228,6 @@ function renderOverview(){
   const gv=i=>k[i].drill?drillNum(rows,k[i].drill[0],k[i].drill[1],k[i].v):k[i].v;
   const gd=i=>miniD(P,CMP[i]);
   const wkL=DB.weekLabels[3], wkP=DB.weekLabels[2];
-  /* 三张卡底部的结论：全部由当前数据拼出，不写死文案 */
-  const qFoot = (m.rateL1!=null&&m.rate4!=null)
-    ? (m.rateL1>m.rate4+0.03 ? `单周（${wkL}）冲到 ${pct(m.rateL1)}，累计仍只有 ${pct(m.rate4)} —— 冲量集中在新周`
-      : m.rateL1<m.rate4-0.03 ? `单周 ${pct(m.rateL1)} 落后累计 ${pct(m.rate4)} —— 最近一周在掉队`
-      : `单周与累计基本同步（${pct(m.rateL1)} vs ${pct(m.rate4)}）`)
-    : '单周达成暂无可比数据';
-  const pFoot = (m.lwPr==null) ? '本周毛利率暂无数据'
-    : (m.lwPr<0 ? `毛利率仍为负，距 8% 临界线差 ${nf((0.08-m.lwPr)*100,1)}pt`
-      : m.lwPr<0.08 ? `已转正，距 8% 临界线还差 ${nf((0.08-m.lwPr)*100,1)}pt`
-      : m.lwPr<0.13 ? `已过 8% 临界线，距 13% 目标差 ${nf((0.13-m.lwPr)*100,1)}pt`
-      : `已超过 13% 目标 ${nf((m.lwPr-0.13)*100,1)}pt`);
-  const iFoot = m.days==null ? '可售天数暂无数据'
-    : (m.days>70 ? `${nf(m.days,1)} 天，仍在压货区` : m.days<30 ? `${nf(m.days,1)} 天，已进入紧张区` : `${nf(m.days,1)} 天，处于 30–70 正常区间`);
   const gapTag = m.gapW==null?'':((m.gapW<0?'缺口 ':'超达 ')+nf(Math.abs(m.gapW),0)+' 件/周');
   const prTag = (m.lwPr!=null&&m.pr!=null)?('较 4 周平均 '+(m.lwPr>=m.pr?'+':'−')+nf(Math.abs((m.lwPr-m.pr)*100),1)+'pt'):'';
   const daysTag = (m.days!=null&&pm&&pm.days!=null)
@@ -2259,7 +2241,6 @@ function renderOverview(){
         <div class="gi"><span>最新周</span><b>${gv(3)}</b>${gd(3)}</div>
         <div class="gi"><span>加权</span><b>${gv(5)}</b>${gd(5)}</div>
       </div>
-      <div class="gf">${qFoot}</div>
     </div>
     <div class="gcard gp">
       <div class="gh"><span class="gt">利 · 毛利与费用</span><span class="gx ${(m.lwPr!=null&&m.pr!=null&&m.lwPr>=m.pr)?'up':'down'}">${prTag}</span></div>
@@ -2271,7 +2252,6 @@ function renderOverview(){
         <div class="gi"><span>仓储 ${wkL}</span><b>${gv(10)}</b>${gd(10)}</div>
         <div class="gi"><span>仓储 4周</span><b>${pct(m.whp)}</b>${miniD(P,{cur:m.whp,prev:pm&&pm.whp,kind:'pt',dir:-1})}</div>
       </div>
-      <div class="gf">${pFoot}</div>
     </div>
     <div class="gcard gi2">
       <div class="gh"><span class="gt">库 · 周转</span><span class="gx">${m.aliveDays==null?'':'动销口径 '+nf(m.aliveDays,0)+' 天'}</span></div>
@@ -2281,56 +2261,9 @@ function renderOverview(){
         <div class="gi"><span>断货 ≤0</span><b>${drillNum(rows,'断货 平台仓≤0',oosP,nf(m.oos))}</b></div>
         <div class="gi"><span>平台仓库存</span><b>${wan(m.invP)}</b></div>
       </div>
-      <div class="gf">${iFoot}</div>
     </div>`;
 
-  const deadN=rows.filter(r=>!(r.d7>0)&&(r.invP||0)>0).length;
 
-  /* 一句话诊断条：数据行给「值 → 暴露的矛盾」，判断行给结论；与下方 KPI 卡片不重复 */
-  const negPrN=rows.filter(r=>r.pr!=null&&r.pr<0).length;
-  let p0N=0, p0Gap=0;
-  try{
-    rows.forEach(r=>{ const g=diag(r); if(g&&g.sev===0){ p0N++; if(g.code.indexOf('超达断货')>=0) p0Gap++; } });
-  }catch(e){}
-  if(!rows.length){
-    $('#diagBar').innerHTML='<span class="dgl">诊断</span>'+
-      '<span class="dgt"><span class="j">当前筛选下没有 SKU —— 请放宽业务组 / SKU状态 / 场景 / 搜索任一条件</span></span>';
-  }else{
-    const gapPt=(m.adp!=null)?(m.adp-0.06)*100:null;
-    const facts=[
-      `达成 <b>${pct(m.rate)}</b>（缺口 <b>${nf(Math.abs(m.gapW),0)}</b> 件/周 · 未达 <b>${drillNum(rows,'未达 <90%',underP,nf(m.under))}</b> 个）`,
-      `费比 <b>${drillNum(rows,'费比 >6%',feeP,pct(m.adp))}</b>（${gapPt==null?'—':(gapPt>=0?'超目标 +':'低于目标 ')+nf(gapPt,1)+'pt'}）`,
-      `可售 <b>${m.days==null?'—':nf(m.days,0)}</b> 天（压货 <b>${drillNum(rows,'压货 >70天',pileP,nf(m.pile))}</b> 个 · 断货 <b>${drillNum(rows,'断货 平台仓≤0',oosP,nf(m.oos))}</b> 个）`,
-      `利润率 <b>${pct(m.pr)}</b>（倒挂 <b>${drillNum(rows,'毛利倒挂 <0%',negP,nf(negPrN))}</b> 个）`
-    ];
-    /* 根因只取经营三条线；利润是结果，作为结论里的一句 */
-    const tags=[];
-    if(m.rate!=null && m.rate<0.90) tags.push('低达成');
-    if(m.adp!=null && m.adp>0.06)  tags.push('高费比');
-    if(m.days!=null && m.days>70)  tags.push('高库存');
-    const prTxt = (m.pr==null) ? '利润待核'
-      : (m.pr<0 ? `已压到 <b>${pct(m.pr)}</b>（亏损）` : `利润只剩 <b>${pct(m.pr)}</b>（目标 13%）`);
-    const tail=p0Gap?`（其中超达断货未调拨 ${nf(p0Gap)} 个）`:'';
-    let judge;
-    if(tags.length>=2){
-      judge=`<b>${tags.join(' + ')}</b> 叠加，${prTxt} —— 先处理 <b>${nf(p0N)}</b> 个 P0${tail}`;
-    }else if(tags.length===1){
-      judge=`主要矛盾在 <b>${tags[0]}</b>，其余在阈值内，${prTxt}；P0 <b>${nf(p0N)}</b> 个按优先级处理${tail}`;
-    }else if(m.pr!=null && m.pr<0.13){
-      judge=`量、费、库三线均在阈值内，但${prTxt}；P0 <b>${nf(p0N)}</b> 个${tail}`;
-    }else{
-      judge=`量、费、库、利四线均在阈值内，维持跟踪；P0 <b>${nf(p0N)}</b> 个${tail}`;
-    }
-    $('#diagBar').innerHTML='<span class="dgl">诊断</span>'+
-      `<span class="dgt"><span class="f">${facts.join(' <i class="sp2">·</i> ')}</span>`+
-      `<span class="j">→ ${judge}</span></span>`;
-  }
-
-  $('#kpiWarn').innerHTML='<b>口径提示</b>'+
-    `<span>达成率含 <b>${nf(m.noFcQ)}</b> 件无预测订单（占 ${pct(m.q?m.noFcQ/m.q:null)}），仅按有预测子集算为 <b>${pct(m.f>0?(m.q-m.noFcQ)/m.f:null)}</b></span>`+
-    `<span>可售天数＝<b>平台仓库存 ${nf(m.invP)} 件 ÷ 平台仓7DMS ${nf(m.d7,0)}</b>，不含自发仓 ${nf(m.invS)} 件（总库存 ${nf(m.inv)} 件）</span>`+
-    `<span>其中含 <b>${nf(deadN)}</b> 个零动销 SKU 的 <b>${nf(m.deadInv)}</b> 件（占平台仓 ${pct(m.invP?m.deadInv/m.invP:null)}），动销口径 <b>${m.aliveDays==null?'—':nf(m.aliveDays,1)}</b> 天</span>`+
-    '<span>利润率与财务「毛利监控」口径有差异，详见校验报告</span>';
 
   const tot=m.over+m.hit+m.under;
   const gs=groupBy(rows,'bu').map(g=>({k:g.k,gap:g.m.gapW})).sort((a,b)=>a.gap-b.gap);
@@ -2360,20 +2293,6 @@ function renderOverview(){
     ],cls:(m.adp!=null&&m.adp>tgt)?'warn':''}
   ];
   $('#insights').innerHTML=ins.map(c=>`<div class="icard ${c.cls}"><div class="ih">${c.h}</div>${c.lines.map(l=>`<div class="il">${l}</div>`).join('')}</div>`).join('');
-  /* v56：洞察默认收起，摘要行给一条最关键的信息 */
-  (function(){
-    const sum=$('#insSum'), btn=$('#insBtn'), box=$('#insights');
-    if(!sum||!btn||!box) return;
-    const warnN=ins.filter(c=>c.cls==='warn').length;
-    sum.innerHTML=`${ins.length} 条 · 其中 <b>${warnN}</b> 条需关注`+(worst?` · 缺口最大 <b>${worst.k}</b> ${nf(worst.gap,1)} 件/周`:'');
-    const setOpen=function(open){
-      box.dataset.collapsed=open?'0':'1';
-      btn.textContent=open?'收起 ▴':'展开 '+ins.length+' 条';
-    };
-    setOpen(false);
-    btn.onclick=function(){ setOpen(box.dataset.collapsed==='1'); };
-  })();
-
   const BG_COLOR={'拉美家具桌椅组':'#2f8fd7','拉美收纳宠户组':'#159b66'};
   const bgs=DB.cat.bg.map(g=>({g,rows:rows.filter(r=>r.bg===g)})).filter(x=>x.rows.length);
   const sg=$('#siteCards');
@@ -4334,8 +4253,11 @@ function exportCsv(rows, tag, slim){
 
 /* ---------- 页脚 ---------- */
 function renderFoot(){
+  const FM=M(agg(ROWS));
+  const PK=prevVersionKey();
+  const deadFull=ROWS.filter(function(r){ return !(r.d7>0)&&(r.invP||0)>0; }).length;
   $('#footNotes').innerHTML=`
-  <div><b>数据版本</b>：当前 ${DB.version}（${DB.weekLabels[0]}–${DB.weekLabels[3]}）｜共 ${VS.order.length} 个版本，切换在页面右上角；切版本会清空筛选与下钻，其余交互不变。<b>01 概况每张 KPI 卡下方的「环比」＝当前版本 vs 上一版快照</b>（同筛选范围、同口径重算）：达成率 / 利润率 / 广告费比用<b>百分点（pt）</b>，订单用<b>同比 %</b>，可售天数用<b>天</b>；红＝向好、绿＝转差、灰＝中性或首版无对比。<b>注意</b>：4 周为滚动窗口，相邻两版窗口整体后移一周（如 ${VS.order.length>=2?VS.data[VS.order[VS.order.length-2]].weekLabels[0]+'–'+VS.data[VS.order[VS.order.length-2]].weekLabels[3]:''} → ${DB.weekLabels[0]}–${DB.weekLabels[3]}），环比里同时含「新一周进入 / 旧一周退出」的影响，不等于同一批周的自然增长。</div>
+  <div><b>数据版本</b>：当前 ${DB.version}（${DB.weekLabels[0]}–${DB.weekLabels[3]}）｜共 ${VS.order.length} 个版本，切换在页面右上角；切版本会清空筛选与下钻，其余交互不变。<b>01 概况每张 KPI 卡下方的「环比」＝当前版本 vs 上一版快照</b>（同筛选范围、同口径重算）：达成率 / 利润率 / 广告费比用<b>百分点（pt）</b>，订单用<b>同比 %</b>，可售天数用<b>天</b>；红＝向好、绿＝转差、灰＝中性或首版无对比。<b>注意</b>：4 周为滚动窗口，相邻两版窗口整体后移一周（如 ${VS.order.length>=2?VS.data[VS.order[VS.order.length-2]].weekLabels[0]+'–'+VS.data[VS.order[VS.order.length-2]].weekLabels[3]:''} → ${DB.weekLabels[0]}–${DB.weekLabels[3]}），环比里同时含「新一周进入 / 旧一周退出」的影响，不等于同一批周的自然增长。<b>01 概况 KPI 的环比基准</b>＝上一版快照 ${PK?PK+'（'+VS.data[PK].weekLabels[0]+'–'+VS.data[PK].weekLabels[3]+'）':'（首版无对比）'}，利三项的环比基准是「上一周」。</div>
   <div><b>数据源</b>：${DB.source}｜明细表（${nf(ROWS.length)} 行，一个 SKU 一行）｜周期 ${DB.weeks[0]} ~ ${DB.weeks[3]}（4 周）</div>
   <div><b>四组达成率</b>（01 KPI 卡、04 维度四层、03 场景表、SKU 明细同一口径）：<b>4周累计·最新版</b>＝Σ4周订单 ÷ Σ4周最新版预测（＝明细表 BS 列）；<b>最新周·最新版</b>＝最新周（${DB.weekLabels[3]}）订单 ÷ 当周最新版预测（BW 列）；<b>最新周·加权</b>＝最新周订单 ÷ 当周加权预测（CM 列）；<b>4周累计·加权</b>＝Σ4周订单 ÷ Σ4周加权预测（CI 列）。SKU 级直接取明细表原生列；BU / 销售负责人 / 三级分类 / 国家Listing 与 03 场景则用「预测达成」表逐周数值分别求和后相除，<b>不对明细表百分比做平均</b>。分母为 0 的 SKU（无预测）其订单仍计入分子。</div>
   <div><b>最新周（${DB.weekLabels[3]}）三项</b>：<b>最新周利润率</b>＝该周业务毛利 ÷ 该周收入总额(审计)；<b>最新周广告占比</b>＝该周产品营销费 ÷ 该周收入；<b>最新周仓储费比</b>＝该周自发仓储费 ÷ 该周收入。<b>SKU 级</b>即明细表 DU / DZ / EE 列（＝该周 K÷I、M÷I、O÷I，逐 SKU 校验零误差）；<b>BU / 销售负责人 / 三级分类 / 国家Listing / 03 场景</b>一律把组内各 SKU 的该周金额分别求和后再相除，<b>不对明细表百分比做平均</b>。单元格下方小字＝与上一周（${DB.weekLabels[2]}）的百分点变化；01 概况同样三张卡，环比基准为「上一周」而非上一版快照。</div>
@@ -4343,12 +4265,13 @@ function renderFoot(){
   <div><b>平台仓可售天数</b>＝Σ平台仓可销售展示库存 ÷ Σ平台仓 7DMS（不含自发仓）；<b>断货</b>＝平台仓库存 ≤0；<b>压货</b>＝平台仓可售天数 &gt;70 天或 M1-M2 连续重度压货；<b>总库存</b>＝平台仓 + 自发仓。</div>
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
   <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
+  <div><b>01 概况的口径细节（整版 ${nf(ROWS.length)} 个 SKU）</b>：<b>4周达成</b>的分母只含预测、分子却是全部订单——其中 <b>${nf(FM.noFcQ)}</b> 件订单所属 SKU 无任何预测（占 Σ订单 ${pct(FM.q?FM.noFcQ/FM.q:null)}），若只按「有预测子集」算则为 <b>${pct(FM.f>0?(FM.q-FM.noFcQ)/FM.f:null)}</b>。<b>可售天数</b>＝平台仓库存 <b>${nf(FM.invP)}</b> 件 ÷ 平台仓 7DMS <b>${nf(FM.d7,0)}</b>，<b>不含自发仓 ${nf(FM.invS)} 件</b>（总库存 ${nf(FM.inv)} 件）；其中含 <b>${nf(deadFull)}</b> 个零动销 SKU 的 <b>${nf(FM.deadInv)}</b> 件（占平台仓 ${pct(FM.invP?FM.deadInv/FM.invP:null)}），按动销口径（剔除零动销）为 <b>${FM.aliveDays==null?'—':nf(FM.aliveDays,1)}</b> 天。<b>利润率</b>＝业务毛利 ÷ 收入总额(审计)，与财务「毛利监控」表存在口径差异，详见校验报告。</div>
   <div><b>03 场景 × 维度交叉</b>：矩阵行是维度值（BU / 销售负责人 / 三级分类 / 国家Listing / SKU），列是六个场景，格内 <b>SKU 数 · 4周订单</b>，底色深浅按该格 SKU 数在本场景内归一（同色系＝同一场景）。下方「全字段表」一行 = 一个「维度值 × 场景」组合，列与上方场景表同一套（24 列，可分组），合计行与上方场景表逐位对齐。<b>点格子</b>＝只看该组合，<b>点维度值</b>＝只看该维度值的全部场景，<b>点场景表头</b>＝只看该场景，标签上的 ✕ 取消；<b>点表格行</b>弹窗看这批 SKU 的全字段明细。导出跟随当前筛选与列分组；维度值超过 14 项时矩阵默认只列前 14（按订单降序），点「展开其余」看全部。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
   <div><b>建议态说明</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（当前 ${DB.version}）输出的「建议」，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。</div>
-  <div><b>异常下钻</b>：<b>01 诊断条 / KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
-  <div><b>01 概况的三张卡</b>：<b>量 / 利 / 库</b> 按主题归并，卡内每个数字都可点开弹窗；主指标下方是<b>环比</b>（量、库与上一版快照比，利的三项与上周比，见卡内小字 title）。四张洞察卡默认收起，摘要行给「需关注条数 + 缺口最大 BU」，点「展开」看全部。</div>
+  <div><b>异常下钻</b>：<b>01 KPI 卡 / 洞察卡、02 的异常 KPI 与交叉矩阵、03 场景表</b>里带下划虚线的数字，点击都<b>直接弹窗</b>列出这批 SKU 的全字段明细（与 04 SKU 明细同列），支持排序 / 筛选 / 导出 CSV，Esc 或点遮罩关闭；不再跳转或滚动页面。04 维度下钻仍是逐级点行下钻（那里的下钻是看「按什么分组」）。</div>
+  <div><b>01 概况的三张卡</b>：<b>量 / 利 / 库</b> 按主题归并，卡内每个数字都可点开弹窗；主指标下方是<b>环比</b>（量、库与上一版快照比，利的三项与上周比，见卡内小字 title）。四张洞察卡常显、不再折叠。01 只留数字：不带诊断句、卡底结论句、口径提示条——口径统一写在下方「01 概况的口径细节」，本期结论看 02 核心异常监控。</div>
   <div><b>表格列分组</b>（03 场景表、04 维度层）：工具条上的 <b>全部 / 规模 / 达成 / 利润 / 库存</b> 可多选，只显示对应列，<b>导出跟随当前选择</b>；04 默认「达成 + 利润」（17 列），要看订单量点「规模」、要看库存点「库存」。</div>
   <div><b>筛选与排序</b>：每个维度层右上角「筛选」可展开列筛选行，<b>该层每一列都能筛</b>——数值列支持 <b>&gt;100</b>、<b>&lt;0</b>、<b>&gt;=10</b>、<b>8~13</b>、<b>12,18</b> 五种写法（输入框右侧箭头可展开常用区间）；组名、场景构成等文本列按<b>包含匹配</b>，并从下拉里直接选已有值；预测 / 利润率 / 可售天数打标按<b>组级档位</b>下拉精确选（百分列按显示值比较，如 <b>&lt;80</b> 不含显示为 80.0% 的组）；点任意列表头排序。<b>SKU 末层同样支持列筛选</b>，文本列（SKU / ASIN / 业务组 / 分类 / 负责人 / 场景）按包含匹配。<b>撤回方式</b>：点「清除筛选」一次性清空该层全部条件（只删某一格的文字则只撤该列）；收起筛选行不会清条件，按钮上的数字表示当前生效列数。筛到 0 行时表格内仍保留「清除筛选」入口。筛选后合计行按命中分组重算，本层导出也只含命中分组。</div>
   <div><b>数据范围</b>：仅巴西站亚马逊（BR · AMZ），已剔除多渠道与墨西哥站数据；业务组 / SKU状态 / 场景 / 搜索为全局筛选；「02 各异常点」点击只弹窗、不改变全局范围；「04 维度下钻」为逐级下钻，三者叠加生效。页面所有数字均为当前范围的实时重算结果，非静态快照。</div>`;
