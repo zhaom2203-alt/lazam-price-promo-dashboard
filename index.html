@@ -1206,6 +1206,28 @@ table.tvt td{text-align:right;padding:5px 9px;border-bottom:1px solid #f2f5fb;
 table.tvt th.l,table.tvt td.l{text-align:left}
 table.tvt tfoot td{font-weight:700;color:var(--ink);background:#fafcff;border-top:1px solid #e7eef9}
 
+/* ===== 侧边目录：可收起（v69） ===== */
+.cols{transition:grid-template-columns .18s ease}
+.sidenav .navh::after{display:none}
+.sidenav .navh .nlbl{font-size:12px;font-weight:700;letter-spacing:1.6px;color:var(--muted)}
+.sidenav .navh .nline{flex:1;height:1px;background:var(--line2)}
+.navtog{flex:none;width:24px;height:24px;padding:0;border-radius:7px;border:1px solid var(--line);
+  background:#fff;color:#8b97ab;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;justify-content:center;transition:.15s}
+.navtog:hover{border-color:#c3d0ea;background:#f4f7fd;color:var(--accent)}
+.navtog:focus-visible{outline:2px solid #b9cdf0;outline-offset:1px}
+.sidenav .navi.up .nup{display:none}
+.cols.navmini{grid-template-columns:56px minmax(0,1fr)}
+.sidenav.mini{padding:10px 7px 8px;overflow:visible}
+.sidenav.mini .navh{padding:2px 0 8px;justify-content:center;gap:0}
+.sidenav.mini .navh .nlbl,.sidenav.mini .navh .nline{display:none}
+.sidenav.mini .navi{justify-content:center;padding:9px 0;gap:0}
+.sidenav.mini .navi .nt{display:none}
+.sidenav.mini .navi.sub{display:none}
+.sidenav.mini .navi.on::before{left:-7px;width:3px;height:16px}
+.sidenav.mini .navi.up{padding-top:11px}
+.sidenav.mini .navi.up .nup{display:inline;font-size:14px}
+
 </style>
 </head>
 <body>
@@ -1809,17 +1831,43 @@ const NAV=[
   {id:'dim3',n:'',t:'国家Listing',sub:1},
   {id:'dim4',n:'',t:'SKU',sub:1}
 ];
+/* 目录收起状态：收起后只留 01–04 编号，点 « / » 切换，记在 localStorage */
+let NAV_MINI=false;
+try{ NAV_MINI = localStorage.getItem('bpNavMini')==='1'; }catch(e){}
+function applyNavMode(){
+  const nav=document.getElementById('sidenav');
+  if(!nav||!nav.parentElement) return;
+  nav.classList.toggle('mini', NAV_MINI);
+  nav.parentElement.classList.toggle('navmini', NAV_MINI);
+  const b=nav.querySelector('.navtog');
+  if(b){
+    b.textContent = NAV_MINI?'»':'«';
+    const t = NAV_MINI?'展开目录':'收起目录';
+    b.title=t; b.setAttribute('aria-label',t); b.setAttribute('aria-expanded', String(!NAV_MINI));
+  }
+}
+function toggleNav(){
+  NAV_MINI=!NAV_MINI;
+  try{ localStorage.setItem('bpNavMini', NAV_MINI?'1':'0'); }catch(e){}
+  applyNavMode();
+}
 function renderNav(){
-  const n=$('#sidenav'); n.innerHTML='<div class="navh">目录</div>';
+  const n=$('#sidenav');
+  n.innerHTML='<div class="navh"><span class="nlbl">目录</span><i class="nline"></i>'+
+    '<button class="navtog" type="button" aria-controls="sidenav"></button></div>';
+  n.querySelector('.navtog').onclick=e=>{e.preventDefault();toggleNav();};
   NAV.forEach(it=>{
     const a=el('a','navi'+(it.sub?' sub':''),`<span class="nn">${it.n||'·'}</span><span class="nt">${it.t}</span>`);
     a.href='#'+it.id;
+    a.title=it.t;
     a.onclick=e=>{e.preventDefault();const t=document.getElementById(it.id); if(t)t.scrollIntoView({behavior:'smooth',block:'start'});};
     n.appendChild(a);
   });
-  const up=el('a','navi up','回到顶部'); up.href='#';
+  const up=el('a','navi up','<span class="nt">回到顶部</span><span class="nup">↑</span>');
+  up.href='#'; up.title='回到顶部';
   up.onclick=e=>{e.preventDefault();window.scrollTo({top:0,behavior:'smooth'});};
   n.appendChild(up);
+  applyNavMode();
 }
 
 /* ---------- 01 ---------- */
