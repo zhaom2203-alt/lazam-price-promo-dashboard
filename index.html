@@ -1495,6 +1495,26 @@ section.block{scroll-margin-top:76px}
 .ovseg b:hover{background:#f4f8ff;color:#2f5bd7}
 .ovseg b.on{background:#eaf0fe;color:#1f4bc4;font-weight:800}
 
+/* ===== v77：吸顶下钻面包屑 + 就地清除 + 场景彩标 ===== */
+#drillBar{position:sticky;top:var(--headh);z-index:36;margin:0;padding:0}
+#drillBar:empty{display:none}
+#drillBar:not(:empty){display:flex;gap:8px;flex-wrap:wrap;align-items:center;
+  margin:0 -24px 10px;padding:8px 24px;background:var(--bg);
+  border-bottom:1px solid var(--line);box-shadow:0 10px 16px -14px rgba(21,32,58,.6)}
+@media (max-width:1180px){#drillBar:not(:empty){margin:0 -16px 10px;padding:8px 16px}}
+#drillBar .dchip{background:#fff}
+#drillBar .dall{margin-left:auto;font-family:inherit;font-size:12px;color:var(--muted);
+  background:#fff;border:1px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer;transition:.15s}
+#drillBar .dall:hover{color:var(--up);border-color:#f0c0c0;background:#fff8f8}
+
+.subblock-head .scope .scx{font-style:normal;margin-left:6px;cursor:pointer;color:#7d92c9;font-size:12px}
+.subblock-head .scope .scx:hover{color:var(--up)}
+
+.sdmat th .scth{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:7px;
+  font-size:11.6px;font-weight:800;letter-spacing:.2px;white-space:nowrap}
+.sdmat th .scth i{margin:0}
+.sksel.expsel{min-width:126px}
+
 </style>
 </head>
 <body>
@@ -1543,8 +1563,8 @@ section.block{scroll-margin-top:76px}
       </div>
       <button class="freset" id="fReset" type="button">重置</button>
     </div>
-    <div class="drillbar" id="drillBar"></div>
   </div>
+  <div class="drillbar" id="drillBar"></div>
 
     <div class="main">
 
@@ -1809,6 +1829,8 @@ const tagS = invP=>{
 
 const SC_ORDER = ['淘汰','压货预警','压货提销','冲坑','利润改善','其他'];
 const SC_COLOR = {'淘汰':'#9aa4b8','压货预警':'#e0603a','压货提销':'#e5a13a','冲坑':'#7a5cd6','利润改善':'#2f8fd7','其他':'#c9d2e0'};
+/* 表头彩字：比底色深一档，保证在 12% 淡底上可读 */
+const SC_TEXT = {'淘汰':'#616E85','压货预警':'#C2451F','压货提销':'#A9750F','冲坑':'#5A3FB8','利润改善':'#1C6DAD','其他':'#78879B'};
 const scColor = s=> SC_COLOR[s]||'#c9d2e0';
 
 function niceMax(v){
@@ -2076,6 +2098,17 @@ function renderFilters(){
   selGroup('#fScene',['全部',...SC_ORDER.filter(x=>DB.cat.sc.indexOf(x)>=0)],F.scene,v=>{F.scene=v;renderAll();});
   if($('#fKw').value!==F.kw) $('#fKw').value=F.kw;
 }
+/* v77：就地清除某一层的收窄——第 i 层由 path[0..i-1] 收窄，去掉「进到这一层」的那一步 */
+function clearLayer(i){
+  const k=Math.min(i, F.path.length);     /* 这一层实际能退掉几级 */
+  if(k<=0){
+    F.bg='全部'; F.status='全部'; F.scene='全部'; F.kw='';
+    const kw=document.getElementById('fKw'); if(kw) kw.value='';
+  }else{
+    F.path=F.path.slice(0, k-1);
+  }
+  renderAll();
+}
 function renderDrill(){
   const bar=$('#drillBar'); bar.innerHTML='';
   const chips=[];
@@ -2095,7 +2128,14 @@ function renderDrill(){
     };
     bar.appendChild(d);
   });
-  /* v71：「重置」按钮已移到筛选卡右侧，这里不再重复放一个 */
+  /* v77：吸顶条右侧放一个「清除全部」，滚到任何位置都能一键回到全量 */
+  const all=el('button','dall','清除全部');
+  all.onclick=()=>{
+    F.bg='全部'; F.status='全部'; F.scene='全部'; F.kw=''; F.path=[];
+    const kw=document.getElementById('fKw'); if(kw) kw.value='';
+    renderAll();
+  };
+  bar.appendChild(all);
 }
 
 /* ---------- 侧栏 ---------- */
@@ -3496,7 +3536,9 @@ function renderSceneDim(){
   let mh='<div class="tbl-wrap sdmat"><table><thead><tr>'+
     '<th class="l" style="min-width:120px">'+dimName+'</th>'+
     SC_ORDER.map(function(s){
-      return '<th data-msc="'+s+'" title="只看「'+s+'」这个场景"><i style="background:'+scColor(s)+'"></i>'+s+'</th>';
+      return '<th data-msc="'+s+'" title="只看「'+s+'」这个场景">'+
+        '<span class="scth" style="background:'+sdTint(scColor(s),0.14)+';color:'+(SC_TEXT[s]||'#5B6C8C')+'">'+
+        '<i style="background:'+scColor(s)+'"></i>'+s+'</span></th>';
     }).join('')+
     '<th>合计</th></tr></thead><tbody>';
   shown.forEach(function(r){
@@ -3582,8 +3624,7 @@ function renderSceneDim(){
   const noSort={np:1,qp:1,invp:1,tagR:1,tagP:1,tagD:1};
 
   let th='<div class="sdbar"><span class="sb1">共 <b>'+nf(total)+'</b> 行 · 第 <b>'+SD.page+' / '+pages+'</b> 页</span>'+
-    (SD.sel?'<span class="sdchip">'+ESCA(sdSelLabel())+'<i id="sdClear" title="取消筛选，显示全部组合">✕</i></span>'
-           :'<span class="sb2">点矩阵格子只看一个组合 · 点行标题看该维度值全部场景 · 点场景表头看该场景全部维度</span>')+
+    (SD.sel?'<span class="sdchip">'+ESCA(sdSelLabel())+'<i id="sdClear" title="取消筛选，显示全部组合">✕</i></span>':'')+
     '<span style="flex:1"></span><label class="sbl">每页</label>'+
     '<select id="sdSize">'+[40,100,200].map(function(v){
       return '<option value="'+v+'"'+(SD.size===v?' selected':'')+'>'+v+'</option>';
@@ -4471,7 +4512,7 @@ function renderDims(){
       wrap.appendChild(el('div','subblock-head',`
         <h3><span class="sn">${i+1}</span>${d.name}</h3>
         <span class="cnt" id="skuCnt">${nf(rows.length)} 行</span>
-        ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'</span>':''}
+        ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'<i class="scx" data-scx="'+i+'" title="清除这一层的收窄">✕</i></span>':''}
         `));
       if(ANO_FOCUS){
         const fb=el('div','focusbar');
@@ -4538,7 +4579,7 @@ function renderDims(){
     wrap.appendChild(el('div','subblock-head',`
       <h3><span class="sn">${i+1}</span>${d.name}</h3>
       <span class="cnt">${nf(groups.length)} 项</span>
-      ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'</span>':''}
+      ${scopeText(i)?'<span class="scope">范围：'+scopeText(i)+'<i class="scx" data-scx="'+i+'" title="清除这一层的收窄">✕</i></span>':''}
       <button class="fbtn${fOn?' on':''}${(fKeys.length+txCnt)?' has':''}" data-fbtn="${i}" title="展开列筛选：数值列选符号 + 填数值；文本列点「全部 ▾」多选；打标列选档位">筛选${(fKeys.length+txCnt)?' '+(fKeys.length+txCnt):''}</button>
       <span class="cgseg" data-cgseg="${i}" title="按用途只显示相关列；导出跟随当前选择">${['all','scale','rate','profit','inv'].map(function(g){
         const on=(g==='all')?(dimCG(i)==='all'):(dimCG(i)!=='all'&&dimCG(i).split('+').indexOf(g)>=0);
@@ -4547,9 +4588,9 @@ function renderDims(){
       }).join('')}</span>
       <button class="cbtn" data-cols="dim${i}" title="选择要显示的列，可应用到所有表格">自定义列</button>
       <span class="dimexp">
-        <select class="sksel" data-expsel="${i}" title="选择导出内容">
-          <option value="sum">本层汇总 · 当前筛选（${groups.length} 组）</option>
-          <option value="sku">本层 SKU 明细 · 当前筛选（${nf(scopeRows.length)} 行）</option>
+        <select class="sksel expsel" data-expsel="${i}" title="导出内容：汇总＝按维度值聚合；SKU 明细＝逐行">
+          <option value="sum">汇总 · ${groups.length} 行</option>
+          <option value="sku">SKU 明细 · ${nf(scopeRows.length)} 行</option>
         </select>
         <button class="expbtn mini" data-expgo="${i}">导出 CSV</button>
       </span>`));
@@ -4753,6 +4794,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 /* 自定义列 / 文本多选：委托到 document，表格重绘后不用重新绑定 */
 document.addEventListener('click',function(e){
+  const scx=e.target.closest && e.target.closest('[data-scx]');
+  if(scx){ e.preventDefault(); e.stopPropagation(); clearLayer(+scx.dataset.scx); return; }
   const cb=e.target.closest && e.target.closest('[data-cols]');
   if(cb){ e.preventDefault(); e.stopPropagation(); openColPanel(cb.dataset.cols, cb); return; }
   const tb=e.target.closest && e.target.closest('[data-tx]');
