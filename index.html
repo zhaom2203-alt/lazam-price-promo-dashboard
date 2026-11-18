@@ -3648,14 +3648,60 @@ function skuFilter(rows){
     });
   });
 }
-const SKU_COLS=[['sku','SKU','l'],['asin','ASIN','l'],['bg','业务组','l'],
-  ['c3','三级分类','l'],['own','负责人',''],['sc','场景',''],['q4','4周订单',''],['f4','预测',''],
-  ['aBW','最新周达成·最新版',''],['aCM','最新周达成·加权',''],
-  ['aBS','4周累计达成·最新版',''],['aCI','4周累计达成·加权',''],['tagR','预测打标','t'],
-  ['lwPr','最新周利润率',''],['pr','4周利润率',''],['tagP','利润率打标','t'],
-  ['lwAd','最新周广告占比',''],['adp','4周广告费比',''],
-  ['lwWh','最新周仓储费比',''],['whp','4周仓储费比',''],['acos','Acos',''],
-  ['invP','平台仓库存',''],['tagS','库存量打标','t'],['invS','自发仓库存',''],['inv','总库存',''],['days','可售天数',''],['tagD','可售天数打标','t']];
+/* 第 4 位是分组：dim=维度列常显，其余按用途收放（scale/rate/profit/inv） */
+const SKU_COLS=[['sku','SKU','l','dim'],['asin','ASIN','l','dim'],['bg','业务组','l','dim'],
+  ['c3','三级分类','l','dim'],['own','负责人','','dim'],['sc','场景','','dim'],
+  ['q4','4周订单','','scale'],['f4','预测','','scale'],
+  ['aBW','最新周达成·最新版','','rate'],['aCM','最新周达成·加权','','rate'],
+  ['aBS','4周累计达成·最新版','','rate'],['aCI','4周累计达成·加权','','rate'],['tagR','预测打标','t','rate'],
+  ['lwPr','最新周利润率','','profit'],['pr','4周利润率','','profit'],['tagP','利润率打标','t','profit'],
+  ['lwAd','最新周广告占比','','profit'],['adp','4周广告费比','','profit'],
+  ['lwWh','最新周仓储费比','','profit'],['whp','4周仓储费比','','profit'],['acos','Acos','','profit'],
+  ['invP','平台仓库存','','inv'],['tagS','库存量打标','t','inv'],['invS','自发仓库存','','inv'],['inv','总库存','','inv'],
+  ['days','可售天数','','inv'],['tagD','可售天数打标','t','inv']];
+/* SKU 层列分组：默认「全部」——末层是明细，不主动藏数据 */
+const SKUCG={g:'all'};
+function skuCG(){ return SKUCG.g||'all'; }
+function skuCols(){
+  const g=skuCG();
+  if(g==='all') return SKU_COLS;
+  const want=g.split('+');
+  return SKU_COLS.filter(function(c){ return c[3]==='dim' || want.indexOf(c[3])>=0; });
+}
+/* SKU 层单元格：表体与导出共用一处定义（不再手写 td 序列，列序变化不会错位） */
+function skuCell(r,c){
+  const days=r.d7>0?r.invP/r.d7:null;
+  switch(c[0]){
+    case 'sku':  return '<td class="l nm" style="max-width:150px" title="'+r.sku+'">'+r.sku+'</td>';
+    case 'asin': return '<td class="l" style="color:var(--muted);font-size:11.5px">'+(r.asin||'—')+'</td>';
+    case 'bg':   return '<td class="l" style="max-width:130px;overflow:hidden;text-overflow:ellipsis" title="'+r.bg+'">'+r.bg+'</td>';
+    case 'c3':   return '<td class="l">'+r.c3+'</td>';
+    case 'own':  return '<td>'+r.own+'</td>';
+    case 'sc':   return '<td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+scColor(r.sc)+';margin-right:5px"></span>'+r.sc+'</td>';
+    case 'q4':   return '<td><b>'+nf(r.q4)+'</b></td>';
+    case 'f4':   return '<td>'+nf(r.f4,0)+'</td>';
+    case 'aBW':  return '<td>'+rateCapped(r.aBW)+'</td>';
+    case 'aCM':  return '<td>'+rateCapped(r.aCM)+'</td>';
+    case 'aBS':  return '<td>'+rateCapped(r.aBS)+'</td>';
+    case 'aCI':  return '<td>'+rateCapped(r.aCI)+'</td>';
+    case 'tagR': return '<td class="tagc">'+tagChip(tagR(r.f4>0?r.q4/r.f4:null))+'</td>';
+    case 'lwPr': return lwCell(r.lwPr,r.pwPr,1);
+    case 'pr':   return '<td>'+pct(r.pr)+'</td>';
+    case 'tagP': return '<td class="tagc">'+tagChip(tagP(r.pr))+'</td>';
+    case 'lwAd': return lwCell(r.lwAd,r.pwAd,-1);
+    case 'adp':  return '<td>'+pct(r.adp)+'</td>';
+    case 'lwWh': return lwCell(r.lwWh,r.pwWh,-1);
+    case 'whp':  return '<td>'+pct(r.whp)+'</td>';
+    case 'acos': return '<td>'+pct(r.acos)+'</td>';
+    case 'invP': return '<td>'+nf(r.invP)+'</td>';
+    case 'tagS': return '<td class="tagc">'+tagChip(tagS(r.invP))+'</td>';
+    case 'invS': return '<td>'+nf(r.invS)+'</td>';
+    case 'inv':  return '<td>'+nf(r.inv)+'</td>';
+    case 'days': return '<td>'+dayChip(days)+'</td>';
+    case 'tagD': return '<td class="tagc">'+tagChip(tagD(days,r.invP))+'</td>';
+    default:     return '<td>—</td>';
+  }
+}
 
 function skuSorted(rows){
   const key=SKU_ST.sort, dir=SKU_ST.dir;
@@ -3696,12 +3742,17 @@ function renderSkuTable(all, idx){
     '<span class="sp"></span>'+
     '<button class="fbtn'+(SKU_ST.fs?' on':'')+(fKeys.length?' has':'')+'" id="skuFbtn" title="展开/收起筛选行（收起不会清除条件，点「清除筛选」才清空）">筛选'+(fKeys.length?' '+fKeys.length:'')+'</button>'+
     (fKeys.length?'<span class="fclear" id="skuFclear">清除筛选</span>':'')+
+    '<span class="cgseg" id="skuCg" title="按用途只显示相关列；导出与表格同列">'+['all','scale','rate','profit','inv'].map(function(g){
+      const on=(g==='all')?(skuCG()==='all'):(skuCG()!=='all'&&skuCG().split('+').indexOf(g)>=0);
+      const nm={all:'全部',scale:'规模',rate:'达成',profit:'利润',inv:'库存'}[g];
+      return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
+    }).join('')+'</span>'+
     '<label class="sbl">每页</label>'+
     '<select class="sksel" id="skuSize">'+[40,100,200].map(v=>'<option value="'+v+'"'+(SKU_ST.size===v?' selected':'')+'>'+v+'</option>').join('')+
       '<option value="0"'+(SKU_ST.size===0?' selected':'')+'>全部</option></select>'+
     '<label class="sbl">导出当前筛选</label>'+
     '<select class="sksel" id="skuExpScope">'+
-      '<option value="view">当前筛选结果 · 与表格同列（'+SKU_COLS.length+' 列 · '+nf(total)+' 行）</option>'+
+      '<option value="view">当前筛选结果 · 与表格同列（'+skuCols().length+' 列 · '+nf(total)+' 行）</option>'+
       '<option value="page">当前页（'+nf(view.length)+' 行）</option>'+
       '<option value="cols">当前筛选结果 · 精简列（22 列 · '+nf(total)+' 行）</option>'+
       '<option value="all">当前筛选结果 · 全部字段（38 列 · '+nf(total)+' 行）</option>'+
@@ -3709,14 +3760,16 @@ function renderSkuTable(all, idx){
     '<button class="expbtn" id="skuExpBtn">导出 CSV</button>'+
   '</div>';
 
-  h+='<div class="tbl-wrap"><table class="dt" style="min-width:1100px"><thead><tr>';
-  SKU_COLS.forEach(([k,t,c])=>{
+  const cols=skuCols();
+  const tblMin=Math.max(700,cols.length*62);
+  h+='<div class="tbl-wrap"><table class="dt" style="min-width:'+tblMin+'px"><thead><tr>';
+  cols.forEach(([k,t,c])=>{
     h+='<th class="'+(c==='l'?'l':(c==='t'?'tagc':'sortable'))+(SKU_ST.sort===k?' sorted':'')+'" data-k="'+k+'" title="'+({inv:'总库存(平台+自发)',invP:'平台仓可销售展示库存',invS:'自发仓可销售展示库存',days:'平台仓库存 ÷ 平台仓 7DMS',rate:'最新版预测达成',tagR:'按达成率打标：≥110 超达 / 90–110 达成 / 80–90 达成偏低 / <80 严重低达',tagP:'按利润率打标：≤0 负毛利 / 0–8 低毛利 / 8–13 正常毛利 / >13 高毛利',tagD:'按平台仓可售天数打标：<0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货'}[k]||t)+'">'+t+
        (SKU_ST.sort===k?'<span class="sk">'+(SKU_ST.dir<0?'▼':'▲')+'</span>':'')+'</th>';
   });
   h+='</tr>';
   if(SKU_ST.fs){
-    h+='<tr class="filrow">'+SKU_COLS.map(function(c){
+    h+='<tr class="filrow">'+cols.map(function(c){
       const k=c[0];
       if(c[2]==='t') return '<td>'+tagSelHTML(k,SKU_ST.f[k]||'')+'</td>';
       return '<td><input class="fin" data-k="'+k+'" value="'+ESCA(SKU_ST.f[k]||'')+'" placeholder="'+(SKU_PH[k]||'')+'"></td>';
@@ -3724,26 +3777,10 @@ function renderSkuTable(all, idx){
   }
   h+='</thead><tbody>';
   view.forEach(r=>{
-    const days=r.d7>0?r.invP/r.d7:null;
-    h+='<tr data-sku="'+r.sku+'">'+
-      '<td class="l nm" style="max-width:150px" title="'+r.sku+'">'+r.sku+'</td>'+
-      '<td class="l" style="color:var(--muted);font-size:11.5px">'+(r.asin||'—')+'</td>'+
-      '<td class="l" style="max-width:130px;overflow:hidden;text-overflow:ellipsis" title="'+r.bg+'">'+r.bg+'</td>'+
-      '<td class="l">'+r.c3+'</td><td>'+r.own+'</td>'+
-      '<td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:'+scColor(r.sc)+';margin-right:5px"></span>'+r.sc+'</td>'+
-      '<td><b>'+nf(r.q4)+'</b></td><td>'+nf(r.f4,0)+'</td>'+
-      '<td>'+rateCapped(r.aBW)+'</td><td>'+rateCapped(r.aCM)+'</td>'+
-      '<td>'+rateCapped(r.aBS)+'</td><td>'+rateCapped(r.aCI)+'</td>'+
-      '<td class="tagc">'+tagChip(tagR(r.f4>0?r.q4/r.f4:null))+'</td>'+
-      lwCell(r.lwPr,r.pwPr,1)+'<td>'+pct(r.pr)+'</td><td class="tagc">'+tagChip(tagP(r.pr))+'</td>'+
-      lwCell(r.lwAd,r.pwAd,-1)+'<td>'+pct(r.adp)+'</td>'+
-      lwCell(r.lwWh,r.pwWh,-1)+'<td>'+pct(r.whp)+'</td><td>'+pct(r.acos)+'</td>'+
-      '<td>'+nf(r.invP)+'</td><td class="tagc">'+tagChip(tagS(r.invP))+'</td>'+
-      '<td>'+nf(r.invS)+'</td><td>'+nf(r.inv)+'</td><td>'+dayChip(days)+'</td>'+
-      '<td class="tagc">'+tagChip(tagD(days,r.invP))+'</td></tr>';
+    h+='<tr data-sku="'+r.sku+'">'+cols.map(function(c){ return skuCell(r,c); }).join('')+'</tr>';
   });
   if(!view.length){
-    h+='<tr><td colspan="'+SKU_COLS.length+'" style="padding:28px;text-align:center;color:var(--muted)">'+
+    h+='<tr><td colspan="'+cols.length+'" style="padding:28px;text-align:center;color:var(--muted)">'+
       (fKeys.length
         ? '没有符合筛选条件的 SKU —— 点上方「清除筛选」恢复全部 '+nf(all.length)+' 行，或修改筛选条件'
         : '当前路径下没有 SKU')+
@@ -3761,6 +3798,21 @@ function renderSkuTable(all, idx){
   });
   const fbtn=host.querySelector('#skuFbtn');
   if(fbtn) fbtn.onclick=function(){ SKU_ST.fs=!SKU_ST.fs; renderSkuTable(all,idx); };
+  const cg=host.querySelector('#skuCg');
+  if(cg) cg.querySelectorAll('[data-cgv]').forEach(function(b){
+    b.onclick=function(e){
+      e.stopPropagation();
+      const v=b.dataset.cgv;
+      if(v==='all'){ SKUCG.g='all'; }
+      else{
+        let cur=(skuCG()==='all')?[]:skuCG().split('+');
+        if(cur.indexOf(v)>=0) cur=cur.filter(function(x){ return x!==v; });
+        else cur.push(v);
+        SKUCG.g=cur.length?cur.join('+'):'all';
+      }
+      renderSkuTable(all,idx);
+    };
+  });
   const fclr=host.querySelector('#skuFclear');
   if(fclr) fclr.onclick=function(){ SKU_ST.f={}; SKU_ST.page=1; renderSkuTable(all,idx); };
   host.querySelectorAll('input.fin[data-k]').forEach(function(inp){
@@ -3874,7 +3926,8 @@ function exportDimSum(rows, d, i, grp){
 
 /* SKU 层导出：列、列名、取值全部与表格一致（同走 SKU_COLS）→ 所见即所得 */
 function exportSkuView(rows, tag){
-  const head=SKU_COLS.map(function(c){ return c[1]; });
+  const cols=skuCols();
+  const head=cols.map(function(c){ return c[1]; });
   const p1=v=>(v==null||!isFinite(v))?'':(v*100).toFixed(1)+'%';
   const lines=[head.map(csvCell).join(',')];
   rows.forEach(function(r){
@@ -3890,7 +3943,7 @@ function exportSkuView(rows, tag){
       days:(days==null?'':Math.round(days<0?0:days)),
       tagD:tagD(days,r.invP).t
     };
-    lines.push(SKU_COLS.map(function(c){ return csvCell(v[c[0]]); }).join(','));
+    lines.push(cols.map(function(c){ return csvCell(v[c[0]]); }).join(','));
   });
   downloadCsv(lines, '巴西运营监控看板_SKU明细_与表格同列_'+String(tag||'全部').replace(/[\/:*?"<>|]/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.csv');
 }
