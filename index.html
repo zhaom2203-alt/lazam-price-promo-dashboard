@@ -493,7 +493,6 @@ table.dt tfoot td.l{text-align:left}
 .mtx{border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#fff}
 .mtx .mh{padding:9px 13px;font-size:12.5px;font-weight:700;background:#f7fafd;border-bottom:1px solid var(--line2);
   display:flex;align-items:baseline;gap:8px}
-.mtx .mh em{font-style:normal;font-size:11px;color:var(--muted);font-weight:400;margin-left:auto}
 table.ht{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 table.ht th{font-size:11px;color:var(--muted);padding:7px 8px;text-align:center;font-weight:600;border-bottom:1px solid var(--line2)}
 table.ht th.l{text-align:left;padding-left:12px}
@@ -948,7 +947,6 @@ table.skmt th.srt .sk-ar{opacity:.9}
 .tagrule{margin:6px 16px 12px;border:1px solid var(--line2);border-radius:12px;background:#fbfcfe;overflow:hidden}
 .trbar{display:flex;align-items:center;gap:12px;padding:9px 14px;flex-wrap:wrap}
 .tagrule .trt{font-size:12px;font-weight:700;color:var(--ink2);letter-spacing:.2px}
-.tagrule .trs{font-size:11.5px;color:var(--muted)}
 .tagrule .trbtn{margin-left:auto;border:1px solid #d6e0f4;background:#fff;border-radius:8px;
   padding:4px 12px;font-family:inherit;font-size:11.5px;color:#2f5bd7;cursor:pointer;font-weight:600;
   transition:.15s;white-space:nowrap}
@@ -965,8 +963,6 @@ table.tagrt tr.trna td{background:#fafbfd;color:#9aa7bd}
 table.tagrt tr.trna td.cond{color:#aab6c9}
 table.tagrt .tg{min-width:0;padding:1px 8px;font-size:11px}
 table.tagrt .tg em{font-style:normal;font-size:10px;color:#8492a8;margin-left:3px}
-.tagrule .trnote{font-size:11px;color:var(--muted);line-height:1.7;padding:9px 2px 2px}
-.tagrule .trnote code{background:#eef2f9;border-radius:4px;padding:1px 5px;font-size:10.5px;color:#4a5b78}
 
 /* ---------- 打标列下拉筛选 ---------- */
 table.dt tr.filrow select.fin,
@@ -1204,10 +1200,10 @@ td.lwt .lwc[title]{cursor:help}
           <div class="btitle"><span class="bnum">02</span><h2>核心异常监控</h2><span class="cnt" id="anoScope"></span></div>
           <div class="bmeta"><span class="mtag" id="anoMeta"></span></div>
         </div>
-        <div class="subhead"><span>打标异常速览 <b>按口径表打标 · 红字＝需重点处置 · 点任一档位 → 弹窗看这批 SKU</b></span></div>
+        <div class="subhead"><span>打标异常速览</span></div>
         <div class="tagsum" id="anoTags"></div>
 
-        <div class="subhead noline"><span>打标分布 · 按维度 <b>每条＝组内各打标档的 SKU 占比 · 右侧数字＝异常档合计占比 · 点行 → 弹窗看该组 SKU</b></span></div>
+        <div class="subhead noline"><span>打标分布 · 按维度</span></div>
         <div class="tdist" id="anoDist">
           <div class="tdtabs" id="anoDistTabs">
             <button data-d="bu" class="on">BU</button>
@@ -1221,7 +1217,6 @@ td.lwt .lwc[title]{cursor:help}
         <div class="tagrule" id="anoRule">
           <div class="trbar">
             <span class="trt">打标规则</span>
-            <span class="trs">四类打标的分档条件 · 同一套规则用于 02 速览 / 04 维度表 / SKU 明细与弹窗</span>
             <button class="trbtn" id="anoRuleBtn">展开规则表 ▾</button>
           </div>
           <div class="trbody">
@@ -1265,14 +1260,13 @@ td.lwt .lwc[title]{cursor:help}
                 </tr>
               </tbody>
             </table>
-            <div class="trnote">阈值定义在 <code>tagR / tagP / tagD / tagS</code> 四个函数里，改一处四处同步（02 速览 · 02 分布 · 04 维度表 · SKU 明细与弹窗）。「达成率」按 4周累计最新版计算；「库存量」按平台仓可销售展示库存。</div>
           </div>
         </div>
 
-        <div class="subhead noline"><span>异常总览 <b>严重度 P0 立办 / P1 本周 / P2 观察</b></span></div>
+        <div class="subhead noline"><span>异常总览</span></div>
         <div class="kpis" id="anoKpis"></div>
 
-        <div class="subhead noline"><span>达成 × 库存 / 利润 交叉分布 <b>点击任一格子 → 弹窗查看这批 SKU 的完整明细</b></span></div>
+        <div class="subhead noline"><span>达成 × 库存 / 利润 交叉分布</span></div>
         <div class="mtx-wrap" id="anoMtx"></div>
 
       </section>
@@ -3082,7 +3076,7 @@ function renderAno(){
   const zombieDead=zombieRows.filter(r=>r.q4<=0).length;
   const bAll=big.filter(r=>FL(r).over||FL(r).low||FL(r).oos||FL(r).pile||FL(r).prU13||(r.q4>0&&!(r.f4>0))).length;
 
-  $('#anoScope').textContent = nf(mat.length)+' 个 SKU 纳入判定（共 '+nf(rows.length)+'，静默 '+nf(rows.length-mat.length)+' 另计）';
+  $('#anoScope').textContent = nf(mat.length)+' / '+nf(rows.length)+' 个 SKU 纳入判定';
   $('#anoMeta').innerHTML = '<span class="mtag">重点层 <b>'+nf(big.length)+'</b> ｜ P0 <b style="color:#b3271f">'+nf(c0)+
     '</b> ｜ P1 <b style="color:#a9761a">'+nf(c1)+'</b> ｜ 批量层 <b style="color:#2f5bd7">'+nf(c2)+'</b></span>';
 
@@ -3244,7 +3238,7 @@ function renderAno(){
       });
       h+='</tbody></table>';
       if(gs.length>show.length){
-        h+='<div class="dfoot">共 '+gs.length+' 组，按 SKU 数显示前 '+show.length+' 组</div>';
+        h+='<div class="dfoot">前 '+show.length+' / 共 '+gs.length+' 组</div>';
       }
       host.innerHTML=h;
       host.querySelectorAll('tbody tr').forEach(function(tr){
@@ -3288,7 +3282,7 @@ function renderAno(){
   const invT=['断货 ≤0','≤30 天','30–70 天','>70 天'];
   const prT=['毛利 ≥13%','8–13%','<8%','无数据'];
   const mtx=function(title,sub,rowsN,colsN,cm,qm,sev,dim){
-    let h='<div class="mtx"><div class="mh">'+title+'<em>'+sub+'</em></div><table class="ht"><thead><tr><th class="l">达成 \\ '+dim+'</th>';
+    let h='<div class="mtx"><div class="mh">'+title+'</div><table class="ht"><thead><tr><th class="l">达成 \\ '+dim+'</th>';
     colsN.forEach(function(c){ h+='<th>'+c+'</th>'; });
     h+='</tr></thead><tbody>';
     rowsN.forEach(function(rn,i){
@@ -3304,8 +3298,8 @@ function renderAno(){
     return h+'</tbody></table></div>';
   };
   $('#anoMtx').innerHTML=
-    mtx('达成 × 库存','格内：SKU 数 / 订单占比',bandN,invN,c1m,q1m,sev1,'库存')+
-    mtx('达成 × 利润','格内：SKU 数 / 订单占比',bandN,prN,c2m,q2m,sev2,'利润');
+    mtx('达成 × 库存','',bandN,invN,c1m,q1m,sev1,'库存')+
+    mtx('达成 × 利润','',bandN,prN,c2m,q2m,sev2,'利润');
   /* 格子点击 = 定位到这 N 个 SKU（不再只筛选 02 内部清单） */
   $('#anoMtx').querySelectorAll('td[data-a]').forEach(function(td){
     td.onclick=function(){
@@ -4233,6 +4227,7 @@ function renderFoot(){
   <div><b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；<b>加权预测</b>取自「预测达成」表 F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。</div>
   <div><b>打标阈值</b>（四类，完整对照表见「02 核心异常监控 · 打标规则」）：<b>预测达成</b> ≥110% 超达 / 90–110% 达成 / 80–90% 达成偏低 / &lt;80% 严重低达 / 无预测；<b>利润率</b> ≤0 负毛利 / 0–8% 低毛利 / 8–13% 正常毛利 / &gt;13% 高毛利；<b>可售天数</b> &lt;0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货 / 7DMS=0 且库存&gt;0 无动销；<b>库存量</b> ≤0 无库存 / ≤50 低库存量 / 50–100 正常 / &gt;300 库存重点（100–300 源规则未覆盖，暂归正常）。</div>
   <div><b>01 概况的口径细节（整版 ${nf(ROWS.length)} 个 SKU）</b>：<b>4周达成</b>的分母只含预测、分子却是全部订单——其中 <b>${nf(FM.noFcQ)}</b> 件订单所属 SKU 无任何预测（占 Σ订单 ${pct(FM.q?FM.noFcQ/FM.q:null)}），若只按「有预测子集」算则为 <b>${pct(FM.f>0?(FM.q-FM.noFcQ)/FM.f:null)}</b>。<b>可售天数</b>＝平台仓库存 <b>${nf(FM.invP)}</b> 件 ÷ 平台仓 7DMS <b>${nf(FM.d7,0)}</b>，<b>不含自发仓 ${nf(FM.invS)} 件</b>（总库存 ${nf(FM.inv)} 件）；其中含 <b>${nf(deadFull)}</b> 个零动销 SKU 的 <b>${nf(FM.deadInv)}</b> 件（占平台仓 ${pct(FM.invP?FM.deadInv/FM.invP:null)}），按动销口径（剔除零动销）为 <b>${FM.aliveDays==null?'—':nf(FM.aliveDays,1)}</b> 天。<b>利润率</b>＝业务毛利 ÷ 收入总额(审计)，与财务「毛利监控」表存在口径差异，详见校验报告。</div>
+  <div><b>02 的判定范围与严重度</b>：<b>有效池</b>＝4周订单 ≥10 件或最新版预测 ≥10 件的 SKU（其余为静默 SKU，只计数不判定）；<b>重点层</b>＝有效池中订单 ≥28 件或预测 ≥28 件的 SKU，02 的「超达 / 低达 / 利润异常 / 库存异常」四张卡都按重点层口径统计。<b>严重度</b>：P0 立办（超达断货未调拨、毛利倒挂）／P1 本周（超达低毛利、低达压货、无预测等）／P2 批量（套用统一动作），自上而下命中即停。</div>
   <div><b>03 场景 × 维度交叉</b>：矩阵行是维度值（BU / 销售负责人 / 三级分类 / 国家Listing / SKU），列是六个场景，格内 <b>SKU 数 · 4周订单</b>，底色深浅按该格 SKU 数在本场景内归一（同色系＝同一场景）。下方「全字段表」一行 = 一个「维度值 × 场景」组合，列与上方场景表同一套（24 列，可分组），合计行与上方场景表逐位对齐。<b>点格子</b>＝只看该组合，<b>点维度值</b>＝只看该维度值的全部场景，<b>点场景表头</b>＝只看该场景，标签上的 ✕ 取消；<b>点表格行</b>弹窗看这批 SKU 的全字段明细。导出跟随当前筛选与列分组；维度值超过 14 项时矩阵默认只列前 14（按订单降序），点「展开其余」看全部。</div>
   <div><b>色阶</b>：达成率 ≥110% 深红、100–110% 浅红、90–100% 橙、80–90% 浅绿、&lt;80% 深绿（沿用集团涨红跌绿口径，红＝超达、绿＝缺口）；利润率同向（高＝红、低＝绿）；可售天数走红绿灯（&lt;30 天红＝紧张、30–70 天绿＝健康、&gt;70 天橙＝压货）。</div>
   <div><b>最新周单元格的小字</b>：▲红＝向好、▼绿＝转差、灰＝持平；百分点差值＝本周比率 − 上周比率，不是相对变化率。<b>明细与导出</b>：<b>导出的列、列名、取值与页面表格完全一致</b>——04 维度层「本层汇总」＝该层表格（# / 维度值 / SKU数 … 场景构成，22 列，含合计行，顺序与筛选跟随当前视图）；「本层 SKU 明细」、SKU 末层默认导出、02/01 弹窗导出＝表格 24 列；03 场景表导出＝表格 23 列（含维度拆分列）。数值精度也与页面一致（百分 1 位小数、件数取整、可售天数取整）。仅「全部字段」选项额外导出源表 38 个字段（列多于表格，便于二次加工）。<b>导出范围＝当前筛选与下钻后的结果</b>（筛到几个 BU / 几个 SKU 就导几个）；需要整版数据时用页头右上角<b>「全量导出 CSV」</b>——当前数据版本全部 SKU，绕过全局筛选、下钻范围与列筛选。CSV 均为 UTF-8 BOM，Excel 直接打开。</div>
