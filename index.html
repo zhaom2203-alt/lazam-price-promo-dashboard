@@ -1077,7 +1077,7 @@ td.lwt .lwc[title]{cursor:help}
 .gcard .gm.two .gmi{display:flex;flex-direction:column;gap:1px;min-width:0}
 .gcard .gm.two .gl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gcard .gm.two .gn{font-size:23px}
-@media (max-width:1320px){.gcard .gm.two{grid-template-columns:1fr;gap:6px}.gcard .gm.two .gn{font-size:22px}}
+@media (max-width:1220px){.gcard .gm.two{grid-template-columns:1fr;gap:6px}.gcard .gm.two .gn{font-size:22px}}
 .gcard .gl{font-size:11px;color:var(--muted)}
 .gcard .gn{font-size:26px;font-weight:700;letter-spacing:-.5px;font-variant-numeric:tabular-nums;line-height:1.1}
 .gcard .gm i,.gcard .gi i{font-style:normal;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -1385,7 +1385,7 @@ section.block{scroll-margin-top:76px}
 .cbtn{font-family:inherit;font-size:12px;font-weight:600;color:var(--accent);background:#fff;
   border:1px solid #d6e0f4;border-radius:8px;padding:4px 10px;cursor:pointer;white-space:nowrap;transition:.15s}
 .cbtn:hover{background:#f4f8ff;border-color:#b9cdf0}
-.cpanel{position:fixed;z-index:120;width:300px;background:#fff;border:1px solid #dbe4f3;border-radius:13px;
+.cpanel{position:fixed;z-index:1400;width:300px;   /* 高于 SKU 弹窗遮罩（900），否则面板会被盖住 */background:#fff;border:1px solid #dbe4f3;border-radius:13px;
   box-shadow:0 18px 44px -14px rgba(21,32,58,.4);padding:12px 12px 10px;font-size:13px}
 .cpanel[hidden]{display:none}
 .cpanel .cph{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
@@ -1420,6 +1420,80 @@ section.block{scroll-margin-top:76px}
 .fmul i{font-style:normal;color:#a3afc3;font-size:10px;margin-left:2px}
 .fmul:hover{border-color:#c3d0ea;color:var(--accent)}
 .fmul.on{background:var(--accent-soft);border-color:#b9cdf0;color:var(--accent);font-weight:700}
+
+/* ===== v74：图表数值标签（柱线合一） ===== */
+.blab{font-size:9.8px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.1px}
+.rlab{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.rrow{font-size:9.8px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ===== v74：顶栏——数据源/范围/生成 一律两行（小标签 + 数值） ===== */
+.apphead{gap:18px;padding:8px 20px}
+.apphead .vtop{display:flex;align-items:center;gap:16px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;row-gap:4px}
+.apphead .meta{display:flex;align-items:stretch;gap:24px;margin-left:4px;padding-left:18px;
+  border-left:1px solid var(--line)}
+.apphead .meta .pill{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:0;background:none;border:0;
+  box-shadow:none;max-width:none;min-width:0}
+.apphead .meta .pill em{font-style:normal;font-size:10px;color:#9aa6ba;letter-spacing:.4px;line-height:1.2}
+.apphead .meta .pill b{font-size:12.5px;font-weight:700;color:var(--ink2);line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:270px;display:block}
+.apphead .meta .pill:first-child b{max-width:320px}
+@media (max-width:1280px){.apphead .meta{display:none}}
+
+/* ===== v74：01 三卡——字号加大、版面填满 ===== */
+.gcard{gap:8px;padding:13px 16px 13px}
+.gcard .gt{font-size:14px;font-weight:800;letter-spacing:.2px}
+.gcard .gx{font-size:11.5px;font-weight:700}
+.gcard .gl{font-size:11.5px}
+.gcard .gn{font-size:30px;font-weight:800}
+.gcard .gm.two{gap:16px}
+.gcard .gm.two .gn{font-size:26px}
+.gcard .gi span{font-size:10.8px;font-weight:600}
+.gcard .gi b{font-size:16.5px;font-weight:800}
+.gcard .gs{margin-top:2px;padding-top:9px}
+.gcard .gs.four{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.icard .ih{font-size:11.8px;font-weight:800;letter-spacing:.3px}
+.icard .il{font-size:13px}
+
+/* 量卡：4 周达成迷你柱 */
+.gcard .gwk{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:2px;
+  padding-top:9px;border-top:1px dashed #eef3fa}
+.gcard .gwk .wk{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.gcard .gwk .wv{font-size:11.5px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
+.gcard .gwk .wb{position:relative;display:block;width:100%;height:26px;background:#f1f5fd;border-radius:5px;overflow:hidden}
+.gcard .gwk .wb i{position:absolute;left:0;right:0;bottom:0;border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,#8fb5f9,#2f5bd7)}
+.gcard .gwk .wl{font-size:9.6px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+/* 利卡：三项对目标 */
+.gcard .gtgs{margin-top:2px;padding-top:9px;border-top:1px dashed #eef3fa;display:flex;flex-direction:column;gap:5px}
+.gcard .gtg{display:grid;grid-template-columns:30px 1fr 58px;align-items:center;gap:9px}
+.gcard .gtg .tl{font-size:10.8px;color:var(--muted);font-weight:600}
+.gcard .gtg .tb{position:relative;display:block;height:7px;background:#f1f5fc;border-radius:4px}
+.gcard .gtg .tb i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#cf5b4c}
+.gcard .gtg .tb i.good{background:#2f9e74}
+.gcard .gtg .tb b{position:absolute;top:-3px;width:2px;height:13px;background:#5c6f8c;border-radius:1px}
+.gcard .gtg .tv{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.gcard .gtg .tv.bad{color:#b3271f}
+.gcard .gtg .tv.good{color:#127a52}
+.gcard .gtgn{font-size:9.6px;color:#a3afc3}
+
+/* 库卡：五档两列 + 总库存一行 */
+.gcard .gbands.two{display:grid;grid-template-columns:1fr 1fr;gap:1px 18px;margin-top:2px;
+  padding-top:9px;border-top:1px dashed #e7eef9}
+.gcard .gbr2{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2.5px 0;
+  font-size:11px;color:var(--ink2)}
+.gcard .gbr2 .gbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gcard .gbr2 .gbb{font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.gcard .gtot{display:flex;gap:16px;flex-wrap:wrap;margin-top:auto;padding-top:9px;
+  border-top:1px solid #eef3fa;font-size:10.8px;color:var(--muted);align-items:baseline}
+.gcard .gtot b{color:var(--ink);font-weight:800;font-variant-numeric:tabular-nums;font-size:12.5px}
+
+/* 版式切换（均衡 / 图文） */
+.ovseg{display:inline-flex;border:1px solid #dbe4f4;border-radius:7px;overflow:hidden;background:#fff;margin-left:4px}
+.ovseg b{font-size:11px;font-weight:600;color:#6b7c96;padding:2px 9px;cursor:pointer;border-right:1px solid #eef2f9}
+.ovseg b:last-child{border-right:0}
+.ovseg b:hover{background:#f4f8ff;color:#2f5bd7}
+.ovseg b.on{background:#eaf0fe;color:#1f4bc4;font-weight:800}
 
 </style>
 </head>
@@ -1920,12 +1994,15 @@ function groupBy(rows,f){
 
 /* ---------- 顶栏 / 筛选 ---------- */
 function renderTop(){
-  /* v71：覆盖 / 周期 已由版本选择器显示，顶栏只留三条，避免标题行被挤成两行 */
-  $('#topMeta').innerHTML=[
-    `数据源 <b>${DB.source}</b>`,
-    `范围 <b>${DB.scope}</b>`,
-    `生成 <b>${DB.builtAt}</b>`
-  ].map(t=>`<span class="pill">${t}</span>`).join('');
+  /* v74：右上一律两行——上行小标签、下行数值；三段并排，宽度不够时整段换行 */
+  const META=[
+    ['数据源', DB.source],
+    ['范围', DB.scope],
+    ['生成', DB.builtAt]
+  ];
+  $('#topMeta').innerHTML=META.map(function(x){
+    return '<span class="pill" title="'+x[0]+'：'+String(x[1]||'')+'"><em>'+x[0]+'</em><b>'+String(x[1]||'—')+'</b></span>';
+  }).join('');
   const lg=$('#logoTag'); if(lg) lg.textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
   const ae=$('#allExp');
   if(ae) ae.onclick=()=>{
@@ -2242,7 +2319,7 @@ function closeSkuList(){
   if(m) m.classList.remove('on');
 }
 /* ---------- SKU 明细弹窗：列排序 + 列筛选 ---------- */
-const SKM={label:'',rows:[],sort:'q4',dir:-1,fs:true,f:{}};
+const SKM={label:'',rows:[],sort:'q4',dir:-1,fs:true,f:{},tx:{}};
 let skmTimer=null;
 const SKM_TGT={sku:'包含',asin:'包含',bg:'包含',c3:'包含',own:'包含',sc:'包含',
   q4:'>100',f4:'>0',rate:'<80',aBW:'<80',aCM:'<80',aBS:'<80',aCI:'<80',pr:'<0',adp:'>8',whp:'>2',acos:'>10',
@@ -2277,6 +2354,14 @@ function skmList(){
       });
     });
   }
+  /* 文本列多选：多值之间 OR，与数值条件 AND（v74） */
+  const tx=SKM.tx||{};
+  const tks=Object.keys(tx).filter(function(k){ return tx[k]&&tx[k].length; });
+  if(tks.length){
+    out=out.filter(function(r){
+      return tks.every(function(k){ const raw=skmVal(r,k); return raw!=null && tx[k].indexOf(String(raw))>=0; });
+    });
+  }
   const key=SKM.sort, dir=SKM.dir;
   const arr=out.slice();
   arr.sort(function(a,b){
@@ -2299,8 +2384,42 @@ function skmSort(k){
   else { SKM.sort=k; SKM.dir=-1; }
   skmPaint(true);
 }
+/* 弹窗列：跟随「自定义列」scope=skm；没有设置时就是全部 27 列 */
+function skmCols(){
+  /* SKU_COLS 是数组结构（k/t/类/组），不能直接套 colxCols（那是给对象列用的） */
+  const sel=colxEffective('skm');
+  if(!sel) return SKU_COLS;
+  const out=SKU_COLS.filter(function(c){ return c[3]==='dim' || sel.has(c[0]); });
+  return out.length?out:SKU_COLS.slice(0,1);
+}
+/* 文本列候选值（去重，最多 400 个，避免 Listing 这种长列表卡住） */
+function skmVals(k){
+  const set={}, out=[];
+  SKM.rows.forEach(function(r){
+    const v=r[k]; if(v==null||v==='') return;
+    const key=String(v);
+    if(!set[key] && out.length<400){ set[key]=1; out.push(key); }
+  });
+  return out.sort(function(a,b){ return a.localeCompare(b); });
+}
+function skmTxBtn(k,vals){
+  const cur=(SKM.tx&&SKM.tx[k])||[];
+  let vj='[]'; try{ vj=JSON.stringify(vals||[]); }catch(err){}
+  return '<button type="button" class="fmul'+(cur.length?' on':'')+'" data-txk="'+k+'" data-vals="'+
+    String(vj).replace(/"/g,'&quot;')+'">'+(cur.length? cur.length+' 项' : '全部')+' <i>▾</i></button>';
+}
+/* 数值列：符号下拉 + 数值框，和 04 维度层同一套写法 */
+function skmNumFil(k){
+  const cur=String(SKM.f[k]||'');
+  const m=cur.match(/^(>=|<=|>|<|=)\s*(.*)$/);
+  const op=m?m[1]:'', val=m?m[2]:cur;
+  const ph=String(SKM_TGT[k]||'').replace(/^[><=≥≤]+\s*/,'');
+  return '<span class="fnum"><select class="fop" data-sfop="'+k+'">'+
+    FOPTS.map(function(o){ return '<option value="'+o[0]+'"'+(op===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+    '</select><input class="fin" data-sfk="'+k+'" value="'+ESCA(val)+'" placeholder="'+ph+'"></span>';
+}
 function skmHeadHTML(){
-  return SKU_COLS.map(function(c){
+  return skmCols().map(function(c){
     const k=c[0], isTag=(c[2]==='t');
     const cls=(c[2]==='l'?'l':(isTag?'tagc':''));
     if(isTag) return '<th data-k="'+k+'" class="'+cls+'">'+c[1]+'</th>';
@@ -2311,10 +2430,11 @@ function skmHeadHTML(){
 }
 function skmFilHTML(){
   if(!SKM.fs) return '';
-  return '<tr class="skf">'+SKU_COLS.map(function(c){
-    const k=c[0];
-    if(c[2]==='t') return '<td>'+tagSelHTML(k,SKM.f[k]||'','data-sfk')+'</td>';
-    return '<td><input data-sfk="'+k+'" value="'+ESCA(SKM.f[k]||'')+'" placeholder="'+(SKM_TGT[k]||'')+'"></td>';
+  return '<tr class="skf">'+skmCols().map(function(c){
+    const k=c[0], tp=SKU_TYPES[k]||'num';
+    if(tp==='tag') return '<td>'+tagSelHTML(k,SKM.f[k]||'','data-sfk')+'</td>';
+    if(tp==='txt') return '<td>'+skmTxBtn(k, skmVals(k))+'</td>';
+    return '<td>'+skmNumFil(k)+'</td>';
   }).join('')+'</tr>';
 }
 function skmPaint(rebuildHead){
@@ -2342,11 +2462,12 @@ function skmPaint(rebuildHead){
   const tb=mask.querySelector('tbody');
   if(tb){
     if(!list.length){
-      tb.innerHTML='<tr><td colspan="'+SKU_COLS.length+'" style="padding:30px;text-align:center;color:var(--muted)">'+
+      tb.innerHTML='<tr><td colspan="'+skmCols().length+'" style="padding:30px;text-align:center;color:var(--muted)">'+
         '没有符合筛选条件的 SKU —— 点右上「清除筛选」恢复全部 '+nf(total)+' 个</td></tr>';
     }else{
+      const cols=skmCols();
       tb.innerHTML=list.map(function(r){
-        return '<tr data-sku="'+ESCA(r.sku)+'">'+SKU_COLS.map(function(c){ return skuMCell(r,c[0]); }).join('')+'</tr>';
+        return '<tr data-sku="'+ESCA(r.sku)+'">'+cols.map(function(c){ return skuMCell(r,c[0]); }).join('')+'</tr>';
       }).join('');
     }
   }
@@ -2370,7 +2491,7 @@ function closeSkuList(){
 function openSkuList(label, rows){
   SKM.label=label||'';
   SKM.rows=(rows||[]).slice();
-  SKM.sort='q4'; SKM.dir=-1; SKM.f={}; SKM.fs=true;
+  SKM.sort='q4'; SKM.dir=-1; SKM.f={}; SKM.tx={}; SKM.fs=true;
 
   let mask=document.getElementById('skuModal');
   if(!mask){
@@ -2381,10 +2502,10 @@ function openSkuList(label, rows){
       if(e.target===mask){ closeSkuList(); return; }
       if(e.target.closest('#skmX')){ closeSkuList(); return; }
       if(e.target.closest('#skmFbtn')){ SKM.fs=!SKM.fs; skmPaint(true); return; }
-      if(e.target.closest('#skmClear')){ SKM.f={}; skmPaint(true); return; }
+      if(e.target.closest('#skmClear')){ SKM.f={}; SKM.tx={}; skmPaint(true); return; }
       if(e.target.closest('#skmExp')){
         const name=String(SKM.label).replace(/[\/:*?"<>|]/g,'_');
-        exportSkuView(skmList(), name);
+        exportSkuView(skmList(), name, skmCols());
         return;
       }
       const th=e.target.closest('th[data-sk]');
@@ -2396,7 +2517,9 @@ function openSkuList(label, rows){
       const inp=e.target.closest('input[data-sfk]');
       if(!inp) return;
       const k=inp.dataset.sfk;
-      SKM.f[k]=inp.value;
+      /* 数字列：把左边符号下拉的值一起拼进表达式（v74） */
+      const box=inp.closest('.fnum'), op=box&&box.querySelector('select.fop');
+      SKM.f[k]=(op&&op.value)?(op.value+inp.value):inp.value;
       clearTimeout(skmTimer);
       skmTimer=setTimeout(function(){
         const caret=inp.selectionStart;
@@ -2407,9 +2530,15 @@ function openSkuList(label, rows){
     });
     mask.addEventListener('change', function(e){
       const sel=e.target.closest('select[data-sfk]');
-      if(!sel) return;
-      SKM.f[sel.dataset.sfk]=sel.value;
-      skmPaint(true);
+      if(sel){ SKM.f[sel.dataset.sfk]=sel.value; skmPaint(true); return; }
+      /* 符号下拉变了：保持已输入的数值，只换符号 */
+      const sop=e.target.closest('select[data-sfop]');
+      if(sop){
+        const k=sop.dataset.sfop, box=sop.closest('.fnum'), inp=box&&box.querySelector('input.fin');
+        const val=inp?inp.value.replace(/^[><=≥≤]+\s*/,''):'';
+        SKM.f[k]=sop.value+val;
+        skmPaint(true);
+      }
     });
     mask.addEventListener('keydown', function(e){
       if(e.key==='Enter' && e.target.closest('input[data-sfk]')){ e.preventDefault(); e.target.blur(); }
@@ -2425,7 +2554,8 @@ function openSkuList(label, rows){
     '<div class="skm-head"><b>'+ESCA(label)+'</b>'+
       '<span class="skm-n" id="skmN"></span>'+
       '<span class="skm-tip">点击列名排序 · 点行看单品档案 · Esc 关闭</span>'+
-      '<span class="skm-f"><button class="skm-fbtn on" id="skmFbtn">筛选</button>'+
+      '<span class="skm-f"><button class="cbtn" data-cols="skm">自定义列</button>'+
+        '<button class="skm-fbtn on" id="skmFbtn">筛选</button>'+
         '<button class="skm-clr" id="skmClear" style="display:none">清除筛选</button></span>'+
       '<button class="skm-x" id="skmX" title="关闭">×</button></div>'+
     '<div class="skm-body"><table class="skmt"><thead></thead><tbody></tbody></table></div>'+
@@ -2471,8 +2601,17 @@ function renderOverview(){
   $('#s1scope').textContent=`${nf(m.n)} 个 SKU`;
   $('#s1meta').innerHTML=[
     `<span class="mtag">最新版预测 <b>${nf(m.f,0)}</b></span>`,
-    `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`
+    `<span class="mtag">总库存(平台+自发) <b>${wan(m.inv)}</b>｜平台仓 <b>${wan(m.invP)}</b></span>`,
+    `<span class="ovseg" title="切换三张卡的信息密度"><b data-ov="A" class="${OV_MODE==='A'?'on':''}">均衡</b><b data-ov="B" class="${OV_MODE==='B'?'on':''}">图文</b></span>`
   ].join('');
+  $('#s1meta').querySelectorAll('[data-ov]').forEach(function(b){
+    b.onclick=function(){
+      if(OV_MODE===b.dataset.ov) return;
+      OV_MODE=b.dataset.ov;
+      try{ localStorage.setItem('bpOvMode', OV_MODE); }catch(e){}
+      renderOverview();
+    };
+  });
 
   /* tone：语义色条 —— up＝红（超达/断货等强信号）｜down＝绿（未达/亏损）｜warn＝琥珀（费比/压货） */
   const k=[
@@ -2557,6 +2696,31 @@ function renderOverview(){
   });
   const daysTag = (m.days!=null&&pm&&pm.days!=null)
     ? ('较上一版 '+(m.days<=pm.days?'▼ ':'▲ ')+nf(Math.abs(m.days-pm.days),1)+' 天') : '';
+  /* 图文模式的补充内容：①量卡 4 周达成迷你柱 ②利卡三项对目标 */
+  const wks=trendWeeks(m);
+  const mxW=Math.max.apply(null, wks.map(d=>d.rt||0).concat([0.01]));
+  const stripQ=(OV_MODE==='B')?('<div class="gwk">'+wks.map(function(d){
+      const h=Math.max(8, Math.round((d.rt||0)/mxW*100));
+      return '<div class="wk"><span class="wv">'+(d.rt==null?'—':nf(d.rt*100,1)+'%')+'</span>'+
+        '<span class="wb"><i style="height:'+h+'%"></i></span>'+
+        '<span class="wl">'+d.L+' · '+nf(d.q,0)+'</span></div>';
+    }).join('')+'</div>'):'';
+  const gbar=function(label,v,tgt,scale,lowerBetter){
+    if(v==null) return '<div class="gtg"><span class="tl">'+label+'</span><span class="tb"></span><span class="tv">—</span></div>';
+    const w=(v<=0)?0:Math.max(2, Math.min(100, v/scale*100));
+    const tk=Math.max(0, Math.min(100, tgt/scale*100));
+    const bad=lowerBetter ? v>tgt : v<tgt;
+    return '<div class="gtg"><span class="tl">'+label+'</span>'+
+      '<span class="tb"><i class="'+(bad?'bad':'good')+'" style="width:'+w.toFixed(1)+'%"></i>'+
+      '<b style="left:'+tk.toFixed(1)+'%"></b></span>'+
+      '<span class="tv '+(bad?'bad':'good')+'">'+pct(v)+'</span></div>';
+  };
+  const stripP=(OV_MODE==='B')?('<div class="gtgs">'+
+      gbar('毛利', m.pr, 0.13, 0.32, false)+
+      gbar('广告', m.adp, 0.06, 0.16, true)+
+      gbar('仓储', m.whp, 0.03, 0.06, true)+
+      '<div class="gtgn">竖线＝目标（毛利 ≥13% · 广告 ≤6% · 仓储 ≤3%）</div></div>'):'';
+
   $('#kpis').innerHTML=`
     <div class="gcard gq">
       <div class="gh"><span class="gt">量 · 达成</span><span class="gx ${m.gapW<0?'down':'up'}">${gapTag}</span></div>
@@ -2564,11 +2728,13 @@ function renderOverview(){
         <div class="gmi"><span class="gl">最新周订单（${wkL}）</span><span class="gn">${gvW}</span>${gdW}</div>
         <div class="gmi"><span class="gl">4周累计订单</span><span class="gn">${gv(1)}</span>${gd(1)}</div>
       </div>
-      <div class="gs">
-        <div class="gi"><span>4周达成</span><b>${gv(2)}</b>${gd(2)}</div>
-        <div class="gi"><span>最新周</span><b>${gv(3)}</b>${gd(3)}</div>
-        <div class="gi"><span>加权</span><b>${gv(5)}</b>${gd(5)}</div>
+      <div class="gs four">
+        <div class="gi"><span>4周达成 · 最新版</span><b>${gv(2)}</b>${gd(2)}</div>
+        <div class="gi"><span>最新周 · 最新版</span><b>${gv(3)}</b>${gd(3)}</div>
+        <div class="gi"><span>4周达成 · 加权</span><b>${gv(5)}</b>${gd(5)}</div>
+        <div class="gi"><span>最新周 · 加权</span><b>${gv(4)}</b>${gd(4)}</div>
       </div>
+      ${stripQ}
     </div>
     <div class="gcard gp">
       <div class="gh"><span class="gt">利 · 毛利与费用</span><span class="gx ${(m.lwPr!=null&&m.pr!=null&&m.lwPr>=m.pr)?'up':'down'}">${prTag}</span></div>
@@ -2580,18 +2746,22 @@ function renderOverview(){
         <div class="gi"><span>仓储 ${wkL}</span><b>${gv(10)}</b>${gd(10)}</div>
         <div class="gi"><span>仓储 4周</span><b>${pct(m.whp)}</b>${miniD(P,{cur:m.whp,prev:pm&&pm.whp,kind:'pt',dir:-1})}</div>
       </div>
+      ${stripP}
     </div>
     <div class="gcard gi2">
       <div class="gh"><span class="gt">库 · 周转</span><span class="gx">${m.aliveDays==null?'':'动销口径 '+nf(m.aliveDays,0)+' 天'}</span></div>
       <div class="gm"><span class="gl">平台仓可售天数</span><span class="gn">${gv(11)}</span>${gd(11)}</div>
-      <div class="gbands">
-        <div class="gbr gh5"><span>可售天数档位</span><span>SKU</span><span>平台仓</span><span>自发仓</span><span>7DMS</span></div>
+      <div class="gbands two">
         ${DBAND.map(function(b){
           const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-          return '<div class="gbr"><span class="gbl">'+b.t+'</span>'+
-            '<span class="gbb">'+drillNum(rows,'可售天数 '+lbl,function(r){ return dk(r)===b.k; },nf(b.n))+'</span>'+
-            '<span>'+nf(b.invP)+'</span><span>'+nf(b.invS)+'</span><span>'+nf(b.d7,0)+'</span></div>';
+          return '<div class="gbr2"><span class="gbl">'+b.t+'</span>'+
+            '<span class="gbb">'+drillNum(rows,'可售天数 '+lbl,function(r){ return dk(r)===b.k; },nf(b.n))+'</span></div>';
         }).join('')}
+      </div>
+      <div class="gtot">
+        <span>平台仓 <b>${nf(m.invP)}</b></span>
+        <span>自发仓 <b>${nf(m.invS)}</b></span>
+        <span>合计 <b>${nf(m.inv)}</b></span>
       </div>
     </div>`;
 
@@ -2608,11 +2778,25 @@ function renderOverview(){
       const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
       return b.t+' <b>'+drillNum(rows,'预测达成 '+lbl,function(r){ return rk(r)===b.k; },nf(b.n))+'</b> 个 · 占 '+pct(m.n?b.n/m.n:null);
     }),cls:''},
-    {h:'缺口最大 BU（周均）',lines:[
-      worst?`${drillNum(rows,'BU：'+worst.k, r=>r.bu===worst.k, worst.k+' <b>'+nf(worst.gap,1)+'</b>')} 件/周`:'—',
-      `全盘周均缺口 <b>${nf(m.gapW,1)}</b> 件`,
-      `缺口订单 <b>${nf(m.f-m.q,0)}</b> 件`
-    ],cls:(worst&&worst.gap<0)?'warn':''},
+    /* 缺口＝Σ订单 − Σ最新版预测；负＝缺口（绿）。按周拆开看是哪一周掉的 */
+    {h:'缺口拆解（4周 / 周维度）',lines:(function(){
+      const wg=wks.map(function(d){ return {L:d.L, q:d.q, f:d.f, g:d.q-d.f, rt:d.rt}; });
+      const gt=wg.reduce(function(a2,x){ return a2+x.g; },0);
+      const bad=wg.slice().sort(function(x,y){ return x.g-y.g; })[0];
+      const f1=function(v,d){ return '<b style="color:'+(v<0?'#17794f':'#b3271f')+'">'+nf(v,d==null?0:d)+'</b>'; };
+      /* 每周的缺口数字都能点开：看这一周没达成的 SKU */
+      const wk1=function(i){
+        const d=wg[i];
+        return drillNum(rows, d.L+' 缺口 SKU', function(r){ return (r.qw[i]||0)-(r.fw[i]||0) < -0.5; }, f1(d.g));
+      };
+      return [
+        `4周累计 ${f1(gt)} 件 ｜ 周均 ${f1(gt/4,1)} 件`,
+        `W41 ${wk1(0)} ｜ W42 ${wk1(1)}`,
+        `W43 ${wk1(2)} ｜ W44 ${wk1(3)}`,
+        `最差周 ${bad?bad.L:'—'}（${bad?nf(bad.g,0):'—'} 件 · 达成 ${bad?pct(bad.rt):'—'}）`,
+        `缺口最大 BU ${worst?drillNum(rows,'BU：'+worst.k, r=>r.bu===worst.k, worst.k+' '+nf(worst.gap,1)):'—'} 件/周`
+      ];
+    })(),cls:(m.gapW<0)?'warn':''},
     {h:'库存量结构（平台仓口径）',lines:SBAND.map(function(b){
       const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
       return b.t+' <b>'+drillNum(rows,'库存量 '+lbl,b.p,nf(b.n))+'</b> 个 · 占 '+pct(m.n?b.n/m.n:null);
@@ -2659,6 +2843,9 @@ function renderOverview(){
 
 /* 图表数据表展开状态：切换版本 / 重绘时保持 */
 const TREND_OPEN={qty:false,mth:false};
+/* 01 三卡版式：A＝均衡（纯数字）｜B＝图文（4周迷你柱 / 对目标条） */
+let OV_MODE='B';
+try{ OV_MODE=localStorage.getItem('bpOvMode')||'B'; }catch(e){}
 
 function trendWeeks(m){
   const wfw=(m.wfw&&m.wfw.length)?m.wfw:[0,0,0,0];
@@ -2733,69 +2920,83 @@ function renderTrend(m){
   const labels=DB.weekLabels, N=labels.length;
   const rows4=trendWeeks(m);
 
-  /* 一块画布上下两层：上层「件」= 订单柱 + 最新版预测 + 加权预测；下层「率」= 预测达成 + 加权达成 */
-  const W=760, H=432, P={l:60,r:52,t:26,b:40};
+  /* 柱线合一：左轴「件 / 周」画三根柱，右轴「%」画两条达成率折线；数值直接标在图上 */
+  const W=760, H=352, P={l:56,r:56,t:38,b:68};
   const iw=W-P.l-P.r, bandW=iw/N;
   const x=i=>P.l+bandW*(i+0.5);
-  const topTop=P.t, topH=196, topBot=topTop+topH;
-  const rateTop=topBot+46, rateH=124, rateBot=rateTop+rateH;
+  const plotT=P.t, plotB=H-P.b, plotH=plotB-plotT;
 
   const mxQ=niceMax(Math.max.apply(null, m.qw.concat(m.fw, m.wfw||[], [1])));
-  const yQ=v=>topBot-v/mxQ*topH;
-  /* 达成率轴固定到 100%（全部未达时最直观）；真有超达再抬到 0.1 的整数倍 */
   const maxR=Math.max.apply(null, rows4.map(d=>Math.max(d.rt||0, d.wrt||0)).concat([0]));
   const mxR=maxR<=1 ? 1 : Math.ceil(maxR*10)/10;
-  const yR=v=>rateBot-v/mxR*rateH;
+  const yR=v=>plotB-v/mxR*plotH;
 
   let g='';
-  /* 上下两层的分隔线，避免看成同一张图的两条轴 */
-  g+=`<line x1="${P.l}" y1="${topBot+23}" x2="${W-P.r}" y2="${topBot+23}" stroke="#e9eff8" stroke-width="1"/>`;
-  for(let k=0;k<=3;k++){ const yy=topBot-k/3*topH;
-    g+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="#eef2f9"/>`;
-    g+=`<text x="${P.l-9}" y="${yy+3.5}" text-anchor="end" class="axis-lbl">${nf(mxQ*k/3,0)}</text>`; }
-  for(let k=0;k<=2;k++){ const yy=rateBot-k/2*rateH;
-    g+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="#eef2f9"/>`;
-    g+=`<text x="${W-P.r+8}" y="${yy+3.5}" class="axis-lbl">${nf(mxR*k/2*100,0)}%</text>`; }
+  for(let k=0;k<=4;k++){ const yy=plotB-k/4*plotH;
+    g+=`<line x1="${P.l}" y1="${yy}" x2="${W-P.r}" y2="${yy}" stroke="${k?'#eef2f9':'#dde6f3'}"/>`;
+    g+=`<text x="${P.l-9}" y="${yy+3.5}" text-anchor="end" class="axis-lbl">${nf(mxQ*k/4,0)}</text>`;
+    g+=`<text x="${W-P.r+8}" y="${yy+3.5}" class="axis-lbl">${nf(mxR*k/4*100,0)}%</text>`; }
 
-  /* 三根柱：订单（深蓝）/ 预测量（浅蓝）/ 加权预测量（淡紫） */
-  const bw=Math.min(15, bandW*0.155), gapB=3;
+  /* 三根柱：订单（深蓝）/ 预测量（浅蓝）/ 加权预测量（淡紫）；柱宽加大、组内间距收紧 */
+  const bw=Math.min(32, bandW*0.33), gapB=2;
   const gw=3*bw+2*gapB;
-  let bars='', xl='', hit='';
+  /* 柱顶数值：柱够高就写在柱内，矮了写到柱上方 */
+  function barLab(v,cx,top,h,inColor,outColor,dark){
+    if(!v) return '';
+    const txt=nf(v,0);
+    const halo=dark?'':' stroke="#fff" stroke-width="3.4" paint-order="stroke" stroke-linejoin="round"';
+    return (h>=26)
+      ? `<text x="${cx}" y="${top+13}" text-anchor="middle" class="blab" fill="${inColor}"${halo}>${txt}</text>`
+      : `<text x="${cx}" y="${top-5}" text-anchor="middle" class="blab" fill="${outColor}"${halo}>${txt}</text>`;
+  }
+  let bars='', blabs='', xl='', hit='';
   rows4.forEach(function(d,i){
     const bx=x(i)-gw/2;
-    const hq=Math.max(2, d.q/mxQ*topH);
-    bars+=`<rect x="${bx}" y="${topBot-hq}" width="${bw}" height="${hq}" rx="3" fill="url(#gA)"/>`;
-    const hf=Math.max(1.5, d.f/mxQ*topH);
-    bars+=`<rect x="${bx+bw+gapB}" y="${topBot-hf}" width="${bw}" height="${hf}" rx="3" fill="#a9c4f5"/>`;
+    const hq=Math.max(2, d.q/mxQ*plotH);
+    bars+=`<rect x="${bx}" y="${plotB-hq}" width="${bw}" height="${hq}" rx="4" fill="url(#gA)"/>`;
+    blabs+=barLab(d.q, bx+bw/2, plotB-hq, hq, '#fff', '#1f4bc4', true);
+    const hf=Math.max(1.5, d.f/mxQ*plotH);
+    bars+=`<rect x="${bx+bw+gapB}" y="${plotB-hf}" width="${bw}" height="${hf}" rx="4" fill="#aec7f7"/>`;
+    blabs+=barLab(d.f, bx+bw+gapB+bw/2, plotB-hf, hf, '#14418f', '#3b63b8', false);
     if(d.wf>0){
-      const hw2=Math.max(1.5, d.wf/mxQ*topH);
-      bars+=`<rect x="${bx+2*(bw+gapB)}" y="${topBot-hw2}" width="${bw}" height="${hw2}" rx="3" fill="#cbbcf2"/>`;
+      const hw2=Math.max(1.5, d.wf/mxQ*plotH);
+      bars+=`<rect x="${bx+2*(bw+gapB)}" y="${plotB-hw2}" width="${bw}" height="${hw2}" rx="4" fill="#cfc0f4"/>`;
+      blabs+=barLab(d.wf, bx+2*(bw+gapB)+bw/2, plotB-hw2, hw2, '#4a2f96', '#6a4bc0', false);
     }
-    xl+=`<text x="${x(i)}" y="${H-13}" text-anchor="middle" class="axis-lbl">${d.L}</text>`;
-    hit+=`<rect class="chit" pointer-events="all" data-i="${i}" x="${P.l+bandW*i}" y="${topTop}" width="${bandW}" height="${rateBot-topTop}" fill="transparent"/>`+
-         `<line class="cx" pointer-events="none" data-i="${i}" x1="${x(i)}" y1="${topTop}" x2="${x(i)}" y2="${rateBot}" stroke="#b9c6dd" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>`;
+    xl+=`<text x="${x(i)}" y="${plotB+19}" text-anchor="middle" class="axis-lbl">${d.L}</text>`;
+    /* 达成率写在周标签下一行：橙＝预测达成、绿＝加权达成，避免压在柱子上 */
+    xl+=`<text x="${x(i)}" y="${plotB+37}" text-anchor="middle" class="rrow">`+
+      (d.rt==null?'<tspan fill="#b6c0d0">—</tspan>':'<tspan fill="#cf8a15">'+nf(d.rt*100,1)+'%</tspan>')+
+      '<tspan fill="#c3ccda"> · </tspan>'+
+      (d.wrt==null?'<tspan fill="#b6c0d0">—</tspan>':'<tspan fill="#159b66">'+nf(d.wrt*100,1)+'%</tspan>')+
+      '</text>';
+    hit+=`<rect class="chit" pointer-events="all" data-i="${i}" x="${P.l+bandW*i}" y="${plotT}" width="${bandW}" height="${plotB-plotT}" fill="transparent"/>`+
+         `<line class="cx" pointer-events="none" data-i="${i}" x1="${x(i)}" y1="${plotT}" x2="${x(i)}" y2="${plotB}" stroke="#9fb0cc" stroke-width="1" stroke-dasharray="3 3" opacity="0"/>`;
   });
-  const lineW='', lineF='';
 
   function rateLine(key,color){
-    const pts=[], dots=[];
+    const pts=[], dots=[], labs=[];
     rows4.forEach(function(d,i){
       const v=d[key];
-      if(v!=null){ pts.push(x(i)+','+yR(v));
-        dots.push(`<circle cx="${x(i)}" cy="${yR(v)}" r="3.2" fill="#fff" stroke="${color}" stroke-width="2"/>`); }
+      if(v==null) return;
+      const py=yR(v);
+      pts.push(x(i)+','+py);
+      dots.push(`<circle cx="${x(i)}" cy="${py}" r="3.8" fill="#fff" stroke="${color}" stroke-width="2.2"/>`);
+      /* 数值统一写在底部那行，点上不再叠标签（会和柱内数字打架） */
     });
     if(!pts.length) return '';
-    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round"/>`+dots.join('');
+    return `<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`+dots.join('')+labs.join('');
   }
 
   const svgA=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="周度订单、预测与达成率">
     <defs><linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7ba9f7"/><stop offset="1" stop-color="#2f5bd7"/></linearGradient></defs>
+      <stop offset="0" stop-color="#6f9df3"/><stop offset="1" stop-color="#2f5bd7"/></linearGradient></defs>
     ${g}
-    <text x="${P.l+6}" y="${topTop+13}" class="axis-lbl" style="fill:#aab6c9">件 / 周</text>
-    <text x="${W-P.r+8}" y="${rateTop-12}" class="axis-lbl" style="fill:#aab6c9">达成率</text>
-    ${bars}${lineF}${lineW}
+    <text x="${P.l}" y="${plotT-14}" class="axis-lbl" style="fill:#a5b1c6">件 / 周</text>
+    <text x="${W-P.r+8}" y="${plotT-14}" class="axis-lbl" style="fill:#a5b1c6">达成率</text>
+    ${bars}
     ${rateLine('rt','#cf8a15')}${rateLine('wrt','#159b66')}
+    ${blabs}
     ${xl}${hit}</svg>`;
 
   const itemsA=rows4.map(function(d){
@@ -2804,13 +3005,13 @@ function renderTrend(m){
       ['预测达成',pct(d.rt)],['加权达成',d.wrt==null?'—':pct(d.wrt)]]};
   });
   const legendA='<span><i class="lgb"></i>订单量</span>'+
-    '<span><i class="lgb" style="background:#a9c4f5"></i>预测量</span>'+
-    '<span><i class="lgb" style="background:#cbbcf2"></i>加权预测量</span>'+
+    '<span><i class="lgb" style="background:#aec7f7"></i>预测量</span>'+
+    '<span><i class="lgb" style="background:#cfc0f4"></i>加权预测量</span>'+
     '<span><i class="lgd" style="border-color:#cf8a15;border-top-style:solid"></i>预测达成</span>'+
     '<span><i class="lgd" style="border-color:#159b66;border-top-style:solid"></i>加权达成</span>';
 
   /* ---------- 月度 ---------- */
-  const mth=m.mth||[], W2=760, H2=400, P2={l:64,r:30,t:30,b:40};
+  const mth=m.mth||[], W2=760, H2=352, P2={l:56,r:30,t:38,b:46};
   const iw2=W2-P2.l-P2.r, ih2=H2-P2.t-P2.b;
   const mx2=niceMax(Math.max.apply(null, mth.concat([1])));
   const x2=i=>P2.l+(mth.length>1? iw2/(mth.length-1)*i : iw2/2);
@@ -2824,7 +3025,7 @@ function renderTrend(m){
   const dotsM=mth.map((v,i)=>`<circle cx="${x2(i)}" cy="${y2(v)}" r="3.4" fill="#159b66" stroke="#fff" stroke-width="1.6"/>`).join('');
   const stepM=(mth.length>1? iw2/(mth.length-1) : iw2);
   const labM=mth.map(function(v,i){
-    return `<text x="${x2(i)}" y="${H2-13}" text-anchor="middle" class="axis-lbl">${parseInt(DB.months[i].split('-')[1],10)}月</text>`;
+    return `<text x="${x2(i)}" y="${H2-15}" text-anchor="middle" class="axis-lbl">${parseInt(DB.months[i].split('-')[1],10)}月</text>`;
   }).join('');
   const hitM=mth.map(function(v,i){
     return `<rect class="chit" pointer-events="all" data-i="${i}" x="${x2(i)-stepM/2}" y="${P2.t}" width="${Math.max(16,stepM)}" height="${ih2}" fill="transparent"/>`+
@@ -3562,20 +3763,36 @@ function renderAno(){
 
   /* KPI */
   const sevOf=function(r){ const d=diag(r); return d?d.sev:9; };
+  /* v74：每张卡补一句「这个数是怎么来的」，鼠标悬停即可看 */
+  const TIP={
+    core:'核心异常＝重点层里命中 P0（立办）或 P1（本周）的 SKU 数。重点层＝有效池中 4周订单 ≥28 件的 SKU。'+
+         '副标「重点层命中 X / Y」＝这 Y 个重点层 SKU 里，有 X 个至少命中一条异常规则（超达 / 低达 / 断货 / 压货 / 低毛利 / 有销无预测）。',
+    p0:'P0＝立办，只有两条规则：①毛利倒挂（订单≥28 且毛利率<0）②超达且断货、且调拨建议不是「断货可调入」。'+
+       '一个 SKU 只归一条主因，所以副标两项相加可能大于本数（同一 SKU 两条都符合时先记倒挂）。',
+    over:'超达＝重点层里最新版达成 ≥110%（4周订单 ÷ 4周最新版预测）。副标「调拨未跟上」＝其中平台仓已断货、'+
+         '但调拨建议不等于「断货可调入」的 SKU，即该补的货没在补。',
+    low:'低达＝重点层里最新版达成 <90%。副标「零动作」＝其中既没有建议提报的活动、广告也没有建议的 SKU，'+
+        '等于这个坑放着不管。',
+    profit:'利润异常＝重点层里毛利率 <8% 的 SKU。其中 <0 为「倒挂」（卖一件亏一件），0–8% 为「低毛利」。',
+    stock:'库存异常＝重点层里平台仓断货（库存 ≤0）或压货（可售 >70 天、或标记为连续重度压货）的 SKU；'+
+          '同一个 SKU 可能同时断货与压货（不同 SKU 之间），副标两项相加会大于本数。',
+    dead:'僵尸库存＝全盘（不限重点层）7DMS=0 但平台仓仍有货的 SKU；副标「死库存」＝其中 4 周零订单的，'+
+         '基本只能清货或报废。'
+  };
   const kp=[
-    {k:'核心异常 SKU',v:nf(c0+c1),s:'重点层命中 <b>'+nf(bAll)+'</b> / '+nf(big.length),hl:1,
+    {k:'核心异常 SKU',v:nf(c0+c1),s:'重点层命中 <b>'+nf(bAll)+'</b> / '+nf(big.length),hl:1,tip:TIP.core,
       p:function(r){ return FL(r).mat && sevOf(r)<=1; }, l:'核心异常（P0+P1）'},
-    {k:'P0 即时处理',v:nf(c0),s:'超达断货未调拨 <b>'+nf(bOverGap)+'</b> · 倒挂 <b>'+nf(bNeg)+'</b>',hl:1,
+    {k:'P0 即时处理',v:nf(c0),s:'超达断货未调拨 <b>'+nf(bOverGap)+'</b> · 倒挂 <b>'+nf(bNeg)+'</b>',hl:1,tip:TIP.p0,
       p:function(r){ return FL(r).mat && sevOf(r)===0; }, l:'P0 即时处理'},
-    {k:'超达 SKU',v:nf(bOver),s:'重点层口径 · 调拨未跟上 <b>'+nf(bOverGap)+'</b>',
+    {k:'超达 SKU',v:nf(bOver),s:'重点层口径 · 调拨未跟上 <b>'+nf(bOverGap)+'</b>',tip:TIP.over,
       p:function(r){ return FL(r).mat && FL(r).big && FL(r).over; }, l:'超达 SKU（重点层）'},
-    {k:'低达 SKU',v:nf(bLow),s:'重点层口径 · 零动作 <b>'+nf(bLowNo)+'</b>',
+    {k:'低达 SKU',v:nf(bLow),s:'重点层口径 · 零动作 <b>'+nf(bLowNo)+'</b>',tip:TIP.low,
       p:function(r){ return FL(r).mat && FL(r).big && FL(r).low; }, l:'低达 SKU（重点层）'},
-    {k:'利润异常',v:nf(bPrBad),s:'倒挂 <b>'+nf(bNeg)+'</b> · 0–8% <b>'+nf(bPrBad-bNeg)+'</b>',
+    {k:'利润异常',v:nf(bPrBad),s:'倒挂 <b>'+nf(bNeg)+'</b> · 0–8% <b>'+nf(bPrBad-bNeg)+'</b>',tip:TIP.profit,
       p:function(r){ const f=FL(r); return f.mat && f.big && (f.negPr||f.lowPr); }, l:'利润异常（重点层）'},
-    {k:'库存异常',v:nf(bOosPile),s:'断货 <b>'+nf(bOos)+'</b> · 压货 <b>'+nf(bPile)+'</b>',
+    {k:'库存异常',v:nf(bOosPile),s:'断货 <b>'+nf(bOos)+'</b> · 压货 <b>'+nf(bPile)+'</b>',tip:TIP.stock,
       p:function(r){ const f=FL(r); return f.mat && f.big && (f.oos||f.pile); }, l:'库存异常（重点层）'},
-    {k:'僵尸库存',v:nf(zombieN),s:'占平台仓 <b>'+nf(zombieInv)+'</b> 件 · 死库存 <b>'+nf(zombieDead)+'</b>',hl:1,
+    {k:'僵尸库存',v:nf(zombieN),s:'占平台仓 <b>'+nf(zombieInv)+'</b> 件 · 死库存 <b>'+nf(zombieDead)+'</b>',hl:1,tip:TIP.dead,
       p:function(r){ return FL(r).dead; }, l:'僵尸库存'}
   ];
   /* 语义色条：核心异常/P0/超达＝红系，低达/利润＝绿系，库存/僵尸＝琥珀 */
@@ -3583,7 +3800,8 @@ function renderAno(){
   $('#anoKpis').innerHTML=kp.map(function(x,idx){
     const v=x.p?drillNum(rows,x.l,x.p,x.v,true):x.v;
     const tone=TONES[idx]||'';
-    return '<div class="kpi'+(x.hl?' hl':'')+(tone?' tone-'+tone:'')+'"><div class="k">'+x.k+'</div><div class="v">'+v+'</div><div class="s">'+x.s+'</div></div>';
+    return '<div class="kpi'+(x.hl?' hl':'')+(tone?' tone-'+tone:'')+'"'+(x.tip?' title="'+x.tip+'"':'')+'>'+
+      '<div class="k">'+x.k+'</div><div class="v">'+v+'</div><div class="s">'+x.s+'</div></div>';
   }).join('');
 
   /* ---------- 打标异常速览：预测达成 / 利润率 / 可售天数 三类 ---------- */
@@ -3973,7 +4191,7 @@ const CG_NAME={dim:'维度',scale:'规模与订单',rate:'达成率',profit:'利
 const COLX={scope:null, draft:null, cols:[], btn:null};
 function colxMeta(scope){
   if(scope==='scn'||scope==='sd') return SCN_COLS.map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
-  if(scope==='sku') return SKU_COLS.map(function(c){ return {k:c[0],t:c[1],g:c[3]||'dim'}; });
+  if(scope==='sku'||scope==='skm') return SKU_COLS.map(function(c){ return {k:c[0],t:c[1],g:c[3]||'dim'}; });
   const i=+String(scope).slice(3);
   const ex=DIM_EXTRA[i]||[];
   const all = ex.length ? [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2)) : DIM_ALLCOLS;
@@ -4031,25 +4249,32 @@ function renderColPanel(q){
       const a=b.dataset.ca;
       if(a==='all')  COLX.draft=new Set(COLX.cols.map(function(c){ return c.k; }));
       if(a==='none') COLX.draft=new Set(COLX.cols.filter(COL_LOCK).map(function(c){ return c.k; }));
-      if(a==='default'){ delete COL_SEL[COLX.scope]; if(COL_GLOBAL) COL_GLOBAL=null; colxSave(); closeColPanel(); renderAll(); return; }
-      if(a==='global'){ COL_GLOBAL=Array.from(COLX.draft); COL_SEL={}; colxSave(); closeColPanel(); renderAll(); return; }
+      if(a==='default'){ delete COL_SEL[COLX.scope]; if(COL_GLOBAL) COL_GLOBAL=null; colxSave(); repaintAll(); return; }
+      if(a==='global'){ COL_GLOBAL=Array.from(COLX.draft); COL_SEL={}; colxSave(); repaintAll(); return; }
       if(a==='done'){
         const sc=COLX.scope;
         COL_SEL[sc]=Array.from(COLX.draft);
         if(sc==='scn') SCNCG.g='all';
         else if(sc==='sd') SD.cg='all';
         else if(sc==='sku') SKUCG.g='all';
-        else DIMCG[+String(sc).slice(3)]='all';
-        colxSave(); closeColPanel(); renderAll(); return;
+        else if(sc!=='skm') DIMCG[+String(sc).slice(3)]='all';
+        colxSave(); repaintAll(); return;
       }
       renderColPanel(document.getElementById('colQ').value);
     };
   });
 }
 function closeColPanel(){ const p=document.getElementById('colPanel'); if(p) p.hidden=true; COLX.scope=null; }
+/* 列设置改了：主表重绘 + 弹窗若开着也重绘（v74） */
+function repaintAll(){
+  closeColPanel();
+  renderAll();
+  const mm=document.getElementById('skuModal');
+  if(mm && mm.classList.contains('on')) skmPaint(true);
+}
 
 /* ---------- 文本列多选筛选（v73） ---------- */
-const TXP={i:null,k:null,vals:[],draft:null};
+const TXP={i:null,k:null,vals:[],draft:null,ctx:null};
 function txFilterBtn(i,k,st,vals,label){
   const cur=(st.tx&&st.tx[k])||[];
   let vj='[]'; try{ vj=JSON.stringify(vals||[]); }catch(err){}
@@ -4057,10 +4282,11 @@ function txFilterBtn(i,k,st,vals,label){
     ' data-vals="'+String(vj).replace(/"/g,'&quot;')+'" title="'+(label||'')+' 筛选">'+
     (cur.length? cur.length+' 项' : '全部')+' <i>▾</i></button>';
 }
-function openTxPanel(i,k,vals,btn){
-  TXP.i=i; TXP.k=k; TXP.vals=vals.slice();
-  const st=dimState[i]||{};
-  TXP.draft=new Set((st.tx&&st.tx[k])||[]);
+/* ctx 可选：给出 get/set/after 时，面板读写外部状态（弹窗的 SKM），否则写维度层的 dimState */
+function openTxPanel(i,k,vals,btn,ctx){
+  TXP.i=i; TXP.k=k; TXP.vals=vals.slice(); TXP.ctx=ctx||null;
+  const cur=ctx ? (ctx.get(k)||[]) : (((dimState[i]||{}).tx||{})[k]||[]);
+  TXP.draft=new Set(cur);
   renderTxPanel('');
   const p=document.getElementById('txPanel');
   p.hidden=false;
@@ -4091,11 +4317,16 @@ function renderTxPanel(q){
       const a=b.dataset.ta;
       if(a==='all')  TXP.draft=new Set(TXP.vals.map(String));
       if(a==='none') TXP.draft=new Set();
-      if(a==='reset'){ const st=dimState[TXP.i]||{}; if(st.tx) delete st.tx[TXP.k]; closeTxPanel(); renderDims(); return; }
+      if(a==='reset'){
+        if(TXP.ctx){ TXP.ctx.set(TXP.k,null); closeTxPanel(); TXP.ctx.after(); return; }
+        const st=dimState[TXP.i]||{}; if(st.tx) delete st.tx[TXP.k]; closeTxPanel(); renderDims(); return;
+      }
       if(a==='ok'){
+        const arr=TXP.draft.size?Array.from(TXP.draft):null;
+        if(TXP.ctx){ TXP.ctx.set(TXP.k,arr); closeTxPanel(); TXP.ctx.after(); return; }
         const st=dimState[TXP.i]||(dimState[TXP.i]={});
         st.tx=st.tx||{};
-        if(TXP.draft.size) st.tx[TXP.k]=Array.from(TXP.draft); else delete st.tx[TXP.k];
+        if(arr) st.tx[TXP.k]=arr; else delete st.tx[TXP.k];
         closeTxPanel(); renderDims(); return;
       }
       renderTxPanel(document.getElementById('txQ')?document.getElementById('txQ').value:'');
@@ -4116,7 +4347,8 @@ function dimFilInput(i,k,st,ph,vals){
   return out;
 }
 /* 数字列：符号下拉 + 数值输入，不需要手动输入 > <（v73） */
-const FOPTS=[['','符号'],['>','>'],['>=','≥'],['<','<'],['<=','≤'],['=','=']];
+/* 首项只放一个占位符，不再写「符号」二字（v74） */
+const FOPTS=[['','—'],['>','>'],['>=','≥'],['<','<'],['<=','≤'],['=','=']];
 function dimFilNum(i,k,st,hint){
   const cur=String((st.f&&st.f[k])||'');
   const m=cur.match(/^(>=|<=|>|<|=)\s*(.*)$/);
@@ -4527,6 +4759,18 @@ document.addEventListener('click',function(e){
     let vals=[]; try{ vals=JSON.parse(tb.dataset.vals||'[]'); }catch(err){}
     openTxPanel(+p[0], p[1], vals, tb); return;
   }
+  /* 弹窗里的文本多选（scope 落在 SKM.tx） */
+  const tk=e.target.closest && e.target.closest('[data-txk]');
+  if(tk){
+    e.preventDefault(); e.stopPropagation();
+    let vals=[]; try{ vals=JSON.parse(tk.dataset.vals||'[]'); }catch(err){}
+    openTxPanel(-1, tk.dataset.txk, vals, tk, {
+      get:function(k){ return (SKM.tx||{})[k]||[]; },
+      set:function(k,arr){ SKM.tx=SKM.tx||{}; if(arr&&arr.length) SKM.tx[k]=arr; else delete SKM.tx[k]; },
+      after:function(){ skmPaint(true); }
+    });
+    return;
+  }
   /* 按钮被面板重绘替换后 isConnected=false，此时不能当成「点了外面」 */
   if(e.target.isConnected && (!e.target.closest || !e.target.closest('.cpanel'))){ closeColPanel(); closeTxPanel(); }
 });
@@ -4847,8 +5091,8 @@ function exportDimSum(rows, d, i, grp){
 }
 
 /* SKU 层导出：列、列名、取值全部与表格一致（同走 SKU_COLS）→ 所见即所得 */
-function exportSkuView(rows, tag){
-  const cols=skuCols();
+function exportSkuView(rows, tag, colsIn){
+  const cols=colsIn||skuCols();
   const head=cols.map(function(c){ return c[1]; });
   const p1=v=>(v==null||!isFinite(v))?'':(v*100).toFixed(1)+'%';
   const lines=[head.map(csvCell).join(',')];
@@ -4950,7 +5194,9 @@ function renderFoot(){
       `<b>01 三张卡</b>：量·达成给「最新周订单 / 4周累计订单」两个主指标，下挂 4周达成 / 最新周 / 加权；利的主值是本周利润率，五格是 4周毛利与广告 / 仓储的新旧对比；库的主值是可售天数，三格是压货 / 断货 / 平台仓库存。四张洞察卡常显。`,
       `<b>01 业务组表现</b>：两张组卡的四个达成与全盘同源——最新版＝Σ订单 ÷ Σ最新版预测，加权＝Σ订单 ÷ Σ加权预测；「最新周」取区间最后一周（本期 W44），「4周累计」取四整周。卡内订单 / 利润率下方小字即该组最新周数值，可售天数小字为动销口径（剔除 7DMS=0 的库存）。右上角标签是达成打标（超达 / 达成 / 达成偏低 / 严重低达 / 无预测），与 02 / 04 同一套阈值。`,
       `<b>01 周度 / 月度趋势</b>：周度图一块画布上下两层——<b>上层（件/周）</b>柱＝当周订单、深色虚线＝当周最新版预测、紫色点线＝当周加权预测；<b>下层（右轴 %）</b>橙线＝预测达成（订单÷最新版预测）、绿线＝加权达成（订单÷加权预测）。「查看图表数据」表给出五列原值，合计行是「先求和再相除」。月度图取 2026 年 1–9 月的日均销量（Σ7DMS），悬停 / 点击任一月看数值，表按月份逐行列出。`,
-      `<b>02 判定范围</b>：有效池＝4周订单 ≥10 或预测 ≥10（其余静默 SKU，只计数不判定）；重点层＝有效池中 ≥28 件。<b>严重度</b>：P0 立办（超达断货未调拨、毛利倒挂）／P1 本周（超达低毛利、低达压货、无预测等）／P2 批量，自上而下命中即停。`,
+      `<b>02 判定范围</b>：有效池＝4周订单 ≥10 或预测 ≥10（其余静默 SKU，只计数不判定）；重点层＝有效池中 4周订单 ≥28 件。<b>严重度</b>：P0 立办（超达断货未调拨、毛利倒挂）／P1 本周（超达低毛利、低达压货、无预测等）／P2 批量，自上而下命中即停。`,
+      `<b>02 七张卡</b>：<b>核心异常</b>＝重点层里 P0+P1 的 SKU 数，副标「重点层命中 X/Y」＝Y 个重点层 SKU 里有 X 个至少命中一条异常规则；<b>P0</b>＝立办，只有「毛利倒挂」与「超达断货且调拨未跟上」两条，一个 SKU 只记一条主因；<b>超达</b>＝重点层达成 ≥110%，副标「调拨未跟上」＝其中平台仓断货但调拨建议不是「断货可调入」；<b>低达</b>＝重点层达成 &lt;90%，副标「零动作」＝其中无建议提报且广告无建议；<b>利润异常</b>＝重点层毛利率 &lt;8%（&lt;0 为倒挂）；<b>库存异常</b>＝重点层断货（平台仓 ≤0）或压货（&gt;70 天 / 连续重度）；<b>僵尸库存</b>＝全盘 7DMS=0 但平台仓有货，副标「死库存」＝其中 4 周零订单。副标两项之和大于主数，是因为一个 SKU 可同时命中多条条件。`,
+      `<b>周均缺口</b>：缺口＝Σ4周订单 − Σ4周最新版预测，负＝缺口（订单没达到预测，绿色），正＝超达（红色）。除以 4 得周均，全盘 11,337 − 16,982 ＝ −5,645 件，周均 −1,411.3 件/周。按周拆开就是 W41 −999、W42 −2,084、W43 −1,595、W44 −967；01 洞察卡的「缺口拆解」逐周列出，可以定位是哪一周掉下来的。`, 
       `<b>03 场景</b>：取明细表「场景类型-最新」（判定条件见源表「输出逻辑」页）——淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率 &lt;95% 且可售 &gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。一个 SKU 只落一个场景，六场景相加＝全盘。`,
       `<b>03 交叉表</b>：矩阵行是维度值、列是六个场景，格内 SKU 数 · 4周订单，底色按本场景内归一；下方全字段表一行＝一个「维度值 × 场景」组合，列同上表（24 列，可分组），合计与上表逐位对齐。点格子 / 点维度值 / 点场景表头可收窄，✕ 取消；维度值超 14 项默认列前 14（按订单降序）。`
     ]},
