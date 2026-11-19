@@ -1529,22 +1529,27 @@ table.dt tr.filrow .fnum .fop{width:38px}
 
 /* ===== v81：顶栏两行 / 筛选吸顶 / 库卡分布条 ===== */
 
-/* 1. 顶栏：右侧改两行——上「导出 + 数据版本」，下「数据源 / 范围 / 生成」 */
+/* 1. 顶栏：第一行「数据版本（主体）＋ 导出（次）」，第二行元信息同宽左对齐（v82） */
 .apphead{gap:20px;padding:9px 24px 10px}
 .apphead .brand{gap:13px}
 .apphead .logo{width:44px;height:44px;border-radius:12px;font-size:12px}
 .apphead h1{font-size:20.5px;font-weight:800;letter-spacing:.3px;line-height:1.2}
 .apphead .bsub{margin-top:3px;font-size:11.8px;letter-spacing:.3px}
-.apphead .vtop{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-left:auto}
-.apphead .allexp{padding:5px 12px}
-.apphead .versel{padding:3px 8px 3px 12px}
-.apphead .vrow{display:flex;align-items:center;gap:10px;justify-content:flex-end}
-.apphead .meta{display:flex;align-items:baseline;gap:18px;margin:0;padding:0;border-left:0}
-.apphead .meta .pill{display:inline-flex;align-items:baseline;gap:6px;padding:0;background:none;border:0;
+.apphead .vtop{display:flex;flex-direction:column;align-items:stretch;gap:6px;margin-left:auto}
+.apphead .vrow{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.apphead .versel{padding:4px 10px 4px 13px;border-color:#cfdcf2;
+  box-shadow:0 3px 12px -8px rgba(47,91,215,.55)}
+.apphead .versel select{font-size:13.5px}
+.apphead .allexp{padding:4px 10px;background:transparent;border-color:#e4ebf7;color:#7d8ba4}
+.apphead .allexp:hover{background:#f2f7ff;border-color:#c6d7f3;color:#1f4bc4}
+.apphead .meta{display:flex;align-items:center;justify-content:flex-start;gap:0;margin:0;padding:0;border-left:0}
+.apphead .meta .pill{display:inline-flex;flex-direction:row;align-items:baseline;gap:6px;padding:0;background:none;border:0;
   box-shadow:none;max-width:none;overflow:visible;white-space:nowrap}
+.apphead .meta .pill+.pill{margin-left:15px;padding-left:15px;border-left:1px solid #dbe3f2}
 .apphead .meta .pill em{font-size:10.5px;color:#9aa6ba;letter-spacing:.4px;line-height:1.2}
-.apphead .meta .pill b{font-size:11.8px;font-weight:600;color:#5c6b85;line-height:1.2;
-  max-width:300px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+.apphead .meta .pill b{font-size:11.8px;font-weight:600;color:#5c6b85;line-height:1.2;display:block;
+  max-width:300px;overflow:hidden;text-overflow:ellipsis}
+.apphead .meta .pill.dim b{color:#93a0b5;font-weight:500}
 @media (max-width:1180px){.apphead .meta{display:none}}
 
 /* 2. 筛选卡吸顶：标题下方冻结，滚动时始终可改条件 */
@@ -1589,12 +1594,12 @@ section.block{scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 10
   </div>
   <div class="vtop">
     <div class="vrow">
-      <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】，忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
       <div class="versel" id="verSelBox">
         <span class="vlab">数据版本</span>
         <select id="verSel"></select>
         <span class="vtag" id="verTag">最新</span>
       </div>
+      <button class="allexp" id="allExp" title="导出当前版本的【全部 SKU】，忽略全局筛选、下钻范围与列筛选；列与表格一致">全量导出 CSV</button>
     </div>
     <div class="meta" id="topMeta"></div>
   </div>
@@ -2085,8 +2090,9 @@ function renderTop(){
     ['范围', DB.scope],
     ['生成', DB.builtAt]
   ];
-  $('#topMeta').innerHTML=META.map(function(x){
-    return '<span class="pill" title="'+x[0]+'：'+String(x[1]||'')+'"><em>'+x[0]+'</em><b>'+String(x[1]||'—')+'</b></span>';
+  /* v82：第一行=数据版本（主体）+ 导出（次），第二行=元信息，两行同宽同边界 */
+  $('#topMeta').innerHTML=META.map(function(x,i){
+    return '<span class="pill'+(i===META.length-1?' dim':'')+'" title="'+x[0]+'：'+String(x[1]||'')+'"><em>'+x[0]+'</em><b>'+String(x[1]||'—')+'</b></span>';
   }).join('');
   const lg=$('#logoTag'); if(lg) lg.textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
   const ae=$('#allExp');
