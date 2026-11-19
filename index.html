@@ -1549,7 +1549,6 @@ table.dt tr.filrow .fnum .fop{width:38px}
 .apphead .meta .pill em{font-size:10.5px;color:#9aa6ba;letter-spacing:.4px;line-height:1.2}
 .apphead .meta .pill b{font-size:11.8px;font-weight:600;color:#5c6b85;line-height:1.2;display:block;
   max-width:300px;overflow:hidden;text-overflow:ellipsis}
-.apphead .meta .pill.dim b{color:#93a0b5;font-weight:500}
 @media (max-width:1180px){.apphead .meta{display:none}}
 
 /* 2. 筛选卡吸顶：标题下方冻结，滚动时始终可改条件 */
@@ -2084,15 +2083,14 @@ function groupBy(rows,f){
 
 /* ---------- 顶栏 / 筛选 ---------- */
 function renderTop(){
-  /* v74：右上一律两行——上行小标签、下行数值；三段并排，宽度不够时整段换行 */
+  /* v83：第二行只留「数据源 · 范围」；生成时间下沉到版本选择器的悬停提示 */
   const META=[
     ['数据源', DB.source],
-    ['范围', DB.scope],
-    ['生成', DB.builtAt]
+    ['范围', DB.scope]
   ];
   /* v82：第一行=数据版本（主体）+ 导出（次），第二行=元信息，两行同宽同边界 */
-  $('#topMeta').innerHTML=META.map(function(x,i){
-    return '<span class="pill'+(i===META.length-1?' dim':'')+'" title="'+x[0]+'：'+String(x[1]||'')+'"><em>'+x[0]+'</em><b>'+String(x[1]||'—')+'</b></span>';
+  $('#topMeta').innerHTML=META.map(function(x){
+    return '<span class="pill" title="'+x[0]+'：'+String(x[1]||'')+'"><em>'+x[0]+'</em><b>'+String(x[1]||'—')+'</b></span>';
   }).join('');
   const lg=$('#logoTag'); if(lg) lg.textContent=DB.viewWeek||('W'+DB.weeks[3].split('-')[1]);
   const ae=$('#allExp');
@@ -2119,7 +2117,8 @@ function renderVerSel(){
     tg.textContent=(VKEY===VS.latest?'最新':'历史');
     tg.className='vtag'+(VKEY===VS.latest?'':' old');
   }
-  $('#verSelBox').title=(VKEY===VS.latest?'当前为最新数据版本':'正在查看历史版本，下拉可切回最新');
+  $('#verSelBox').title=(VKEY===VS.latest?'当前为最新数据版本':'正在查看历史版本，下拉可切回最新')
+    +(DB.builtAt?'　·　本版看板生成于 '+DB.builtAt:'');
   const bn=$('#verBanner');
   if(bn){
     const isOld=(VKEY!==VS.latest);
@@ -4345,7 +4344,8 @@ const DIMCOLS=[
   {k:'n',   t:'SKU数',        type:'int', g:'scale'},
   {k:'q',   t:'4周订单',      type:'int', g:'scale'},
   {k:'qp',  t:'订单占比',     type:'pct', g:'scale'},
-  {k:'f',   t:'4周预测',      type:'num', g:'scale'},
+  {k:'f',   t:'4周预测',      type:'num', g:'scale',
+   tip:'该维度下所有 SKU 的 4 周最新版预测合计；明细行逐行四舍五入为整数，合计与达成率一律用精确值，故逐行相加与合计可能差几件（非数据错误）'},
   {k:'rate',t:'4周累计达成·最新版',type:'pct', g:'rate'},
   {k:'rateL1', t:'最新周达成·最新版',type:'pct', g:'rate'},
   {k:'wrateL1',t:'最新周达成·加权',  type:'pct', g:'rate'},
@@ -4883,7 +4883,7 @@ function renderDims(){
         if(c.type==='txt') return '<th class="l">'+c.t+'</th>';
         if(c.type==='tag') return '<th class="l" style="width:'+(c.w||72)+'px">'+c.t+'</th>';
         if(c.k==='sc')     return '<th class="l" style="width:112px">'+c.t+'</th>';
-        return '<th class="sortable'+sk(c.k)+'" data-i="'+i+'" data-k="'+c.k+'">'+c.t+ar(c.k)+'</th>';
+        return '<th class="sortable'+sk(c.k)+'" data-i="'+i+'" data-k="'+c.k+'"'+(c.tip?' title="'+c.tip+'"':'')+'>'+c.t+ar(c.k)+'</th>';
       }).join('')+'</tr>'+
       (fOn ? '<tr class="filrow">'+
         cols.map(function(c){
@@ -5245,7 +5245,7 @@ function renderSkuTable(all, idx){
   const tblMin=Math.max(700,cols.length*62);
   h+='<div class="tbl-wrap"><table class="dt" style="min-width:'+tblMin+'px"><thead><tr>';
   cols.forEach(([k,t,c])=>{
-    h+='<th class="'+(c==='l'?'l':(c==='t'?'tagc':'sortable'))+(SKU_ST.sort===k?' sorted':'')+'" data-k="'+k+'" title="'+({inv:'总库存(平台+自发)',invP:'平台仓可销售展示库存',invS:'自发仓可销售展示库存',days:'平台仓库存 ÷ 平台仓 7DMS',rate:'最新版预测达成',tagR:'按达成率打标：≥110 超达 / 90–110 达成 / 80–90 达成偏低 / <80 严重低达',tagP:'按利润率打标：≤0 负毛利 / 0–8 低毛利 / 8–13 正常毛利 / >13 高毛利',tagD:'按平台仓可售天数打标：<0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货'}[k]||t)+'">'+t+
+    h+='<th class="'+(c==='l'?'l':(c==='t'?'tagc':'sortable'))+(SKU_ST.sort===k?' sorted':'')+'" data-k="'+k+'" title="'+({inv:'总库存(平台+自发)',invP:'平台仓可销售展示库存',invS:'自发仓可销售展示库存',days:'平台仓库存 ÷ 平台仓 7DMS',rate:'最新版预测达成',f4:'4周最新版预测＝4 个周度预测相加，源表带小数；此处逐行四舍五入为整数，合计与达成率一律用精确值，故逐行相加与 KPI 合计可能差几件（非数据错误）',q4:'4周订单合计，整数无尾差',tagR:'按达成率打标：≥110 超达 / 90–110 达成 / 80–90 达成偏低 / <80 严重低达',tagP:'按利润率打标：≤0 负毛利 / 0–8 低毛利 / 8–13 正常毛利 / >13 高毛利',tagD:'按平台仓可售天数打标：<0 断货 / ≤30 缺货 / 30–70 正常 / ≥70 压货'}[k]||t)+'">'+t+
        (SKU_ST.sort===k?'<span class="sk">'+(SKU_ST.dir<0?'▼':'▲')+'</span>':'')+'</th>';
   });
   h+='</tr>';
@@ -5479,6 +5479,8 @@ function renderFoot(){
   const FM=M(agg(ROWS));
   const PK=prevVersionKey();
   const deadFull=ROWS.filter(function(r){ return !(r.d7>0)&&(r.invP||0)>0; }).length;
+  /* v83：预测列的取整尾差 = 逐行四舍五入后相加 − 精确合计 */
+  const f4Int=ROWS.reduce(function(a,r){ return a+Math.round(r.f4||0); },0);
   const PW=VS.order.length>=2 ? VS.data[VS.order[VS.order.length-2]] : null;
   const SEC=[
     {h:'数据与版本', items:[
@@ -5492,7 +5494,8 @@ function renderFoot(){
       `<b>4周累计·最新版</b>＝Σ4周订单 ÷ Σ4周最新版预测（明细表 BS 列）；<b>最新周·最新版</b>＝最新周（${DB.weekLabels[3]}）订单 ÷ 当周最新版预测（BW 列）。`,
       `<b>最新周·加权</b>＝最新周订单 ÷ 当周加权预测（CM 列）；<b>4周累计·加权</b>＝Σ4周订单 ÷ Σ4周加权预测（CI 列）。`,
       `SKU 级直接取明细表原生列；BU / 销售负责人 / 三级分类 / 国家Listing 与 03 场景用「预测达成」表逐周数值求和后再相除，<b>不对百分比取平均</b>；分母为 0 的 SKU（无预测）其订单仍计入分子。`,
-      `<b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；加权预测取自「预测达成」F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。`
+      `<b>周均缺口</b>＝（Σ订单 − Σ最新版预测）÷ 4，负值为缺口；加权预测取自「预测达成」F 列 ${DB.weekLabels[0]}–${DB.weekLabels[3]} 加总。`,
+      `<b>预测列的尾差</b>：4周预测＝4 个周度预测相加，源表本身带小数；明细表与导出<b>逐行四舍五入为整数</b>便于阅读，而<b>合计与达成率一律用精确值</b>。因此把「4周预测」列逐行相加，会和 KPI 的合计差几件——本版逐行相加 ${nf(f4Int)} 件、精确合计 ${nf(FM.f)} 件，差 ${nf(f4Int-Math.round(FM.f))} 件（${pct(FM.f?Math.abs(f4Int-Math.round(FM.f))/FM.f:null,2)}），不是数据错误。`
     ]},
     {h:'利润与费用', items:[
       `四个指标全部<b>金额和比</b>，绝不对比率取平均：<b>毛利率</b>＝Σ业务毛利 ÷ Σ收入总额(审计)；<b>广告费比</b>＝Σ产品营销费 ÷ 收入；<b>仓储费比</b>＝Σ自发仓储费 ÷ 收入——三者取「毛利监控」表（国家=BR、渠道=AMZ、${DB.weekLabels[0]}–${DB.weekLabels[3]}，按 最早SKU 汇总）。`,
