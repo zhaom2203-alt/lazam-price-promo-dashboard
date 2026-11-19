@@ -397,9 +397,9 @@ footer .fh{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:4px}
 }
 
 /* ===== 价促营看板扩展样式（在 base.css 之后加载） ===== */
-.subblock{border-top:1px solid var(--line2);padding-top:2px;scroll-margin-top:112px}
+.subblock{border-top:1px solid var(--line2);padding-top:2px;scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 14px)}
 .subblock:first-child{border-top:0;padding-top:0}
-#secAno,#sec2,#sec5{scroll-margin-top:112px}
+#secAno,#sec2,#sec5{scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 10px)}
 .subblock-head{display:flex;align-items:center;gap:10px;padding:16px 18px 8px;flex-wrap:wrap}
 .subblock-head h3{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px}
 .subblock-head .sn{width:20px;height:20px;border-radius:6px;background:#f0f4fb;color:#5b6c8c;font-size:11px;
@@ -1527,6 +1527,55 @@ table.dt tr.filrow .fclear:hover{background:#fbe0dd;color:#b3271f}
 table.dt tr.filrow .fmul{max-width:132px}
 table.dt tr.filrow .fnum .fop{width:38px}
 
+/* ===== v81：顶栏两行 / 筛选吸顶 / 库卡分布条 ===== */
+
+/* 1. 顶栏：右侧改两行——上「导出 + 数据版本」，下「数据源 / 范围 / 生成」 */
+.apphead{gap:20px;padding:9px 24px 10px}
+.apphead .brand{gap:13px}
+.apphead .logo{width:44px;height:44px;border-radius:12px;font-size:12px}
+.apphead h1{font-size:20.5px;font-weight:800;letter-spacing:.3px;line-height:1.2}
+.apphead .bsub{margin-top:3px;font-size:11.8px;letter-spacing:.3px}
+.apphead .vtop{display:flex;flex-direction:column;align-items:flex-end;gap:5px;margin-left:auto}
+.apphead .allexp{padding:5px 12px}
+.apphead .versel{padding:3px 8px 3px 12px}
+.apphead .vrow{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.apphead .meta{display:flex;align-items:baseline;gap:18px;margin:0;padding:0;border-left:0}
+.apphead .meta .pill{display:inline-flex;align-items:baseline;gap:6px;padding:0;background:none;border:0;
+  box-shadow:none;max-width:none;overflow:visible;white-space:nowrap}
+.apphead .meta .pill em{font-size:10.5px;color:#9aa6ba;letter-spacing:.4px;line-height:1.2}
+.apphead .meta .pill b{font-size:11.8px;font-weight:600;color:#5c6b85;line-height:1.2;
+  max-width:300px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+@media (max-width:1180px){.apphead .meta{display:none}}
+
+/* 2. 筛选卡吸顶：标题下方冻结，滚动时始终可改条件 */
+.appmain{padding:0 24px 56px}
+.verbanner{margin:12px 0 0}
+.stick{position:sticky;top:var(--headh,60px);z-index:38;background:var(--bg);
+  padding:12px 0 6px;margin:0 0 6px}
+.stick .filters{margin:0;position:static}
+.stick #drillBar{position:static;top:auto;z-index:auto}
+.stick #drillBar:not(:empty){margin:8px 0 0;padding:7px 12px;background:#fff;
+  border:1px solid var(--line);border-radius:11px;box-shadow:none}
+section.block{scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 10px)}
+[id^="dim"]{scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 14px)}
+
+/* 3. 库卡：五档分布条（与量卡的迷你柱、利卡的目标条对齐在卡片底部） */
+.gcard .gstack{margin-top:auto;padding-top:10px}
+.gcard .gstack .gsb{display:flex;height:12px;border-radius:4px;overflow:hidden;background:#eef2f9}
+.gcard .gstack .gsb i{display:block;height:100%;transition:flex .3s}
+.gcard .gstack .gsl{display:flex;justify-content:space-between;gap:8px;margin-top:5px;
+  font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.gcard .gstack .gsl b{color:var(--ink);font-weight:800}
+.gcard .gbr2 .gdot{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:5px;vertical-align:1px}
+.gcard .gtot{margin-top:8px}
+
+/* 窄屏：保持原来的 16px 侧距，吸顶区也收一点 */
+@media (max-width:1180px){
+  .appmain{padding:0 16px 44px}
+  .stick{padding:10px 0 6px}
+  .apphead{padding:8px 16px 9px}
+}
+
 </style>
 </head>
 <body>
@@ -1562,6 +1611,7 @@ table.dt tr.filrow .fnum .fop{width:38px}
     <button id="verBack">回到最新 <b id="vbLatest"></b> →</button>
   </div>
 
+  <div class="stick" id="stick">
   <div class="filters">
     <div class="fbar">
       <div class="fgroup"><span class="flab">业务组</span><div class="chips" id="fBg"></div></div>
@@ -1577,6 +1627,7 @@ table.dt tr.filrow .fnum .fop{width:38px}
     </div>
   </div>
   <div class="drillbar" id="drillBar"></div>
+  </div>
 
     <div class="main">
 
@@ -2737,6 +2788,10 @@ function renderOverview(){
       invS:rs.reduce(function(a,r){ return a+(r.invS||0); },0),
       d7:rs.reduce(function(a,r){ return a+(r.d7||0); },0)};
   });
+  /* v81：库存结构条用的配色与合计（与档位一一对应） */
+  const BCOL={oos:'#c0392b',warn:'#e0a52c',ok:'#2f9e74',pile:'#7c6bd6',dead:'#aab4c6'};
+  const bTotal=DBAND.reduce(function(a,b){ return a+b.n; },0);
+  const riskN=DBAND.reduce(function(a,b){ return a+((b.k==='pile'||b.k==='dead')?b.n:0); },0);
   const RBAND=[{k:'over',t:'超达 ≥110%'},{k:'ok',t:'达成 90–110%'},{k:'low',t:'达成偏低 80–90%'},
                {k:'bad',t:'严重低达 &lt;80%'},{k:'na',t:'无预测'}].map(function(b){
     return {k:b.k, t:b.t, n:rows.filter(function(r){ return rk(r)===b.k; }).length};
@@ -2808,9 +2863,17 @@ function renderOverview(){
       <div class="gbands two">
         ${DBAND.map(function(b){
           const lbl=b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>');
-          return '<div class="gbr2"><span class="gbl">'+b.t+'</span>'+
+          return '<div class="gbr2"><span class="gbl"><i class="gdot" style="background:'+(BCOL[b.k]||'#cbd6e8')+'"></i>'+b.t+'</span>'+
             '<span class="gbb">'+drillNum(rows,'可售天数 '+lbl,function(r){ return dk(r)===b.k; },nf(b.n))+'</span></div>';
         }).join('')}
+      </div>
+      <div class="gstack" title="按 SKU 数画的库存结构：断货 / 缺货 / 正常 / 压货 / 无动销">
+        <div class="gsb">${DBAND.map(function(b){
+          return '<i style="flex:'+Math.max(b.n,0.0001)+' 0 0;background:'+(BCOL[b.k]||'#cbd6e8')+'" title="'+
+            b.t.replace(/&lt;/g,'<').replace(/&gt;/g,'>')+'：'+nf(b.n)+' 个 SKU"></i>';
+        }).join('')}</div>
+        <div class="gsl"><span>压货 + 无动销 <b>${nf(riskN)}</b> 个 · 占 ${pct(bTotal?riskN/bTotal:null)}</span>
+          <span>共 ${nf(bTotal)} 个</span></div>
       </div>
       <div class="gtot">
         <span>平台仓 <b>${nf(m.invP)}</b></span>
@@ -5456,6 +5519,7 @@ function renderFoot(){
       `<b>列筛选</b>：03 场景表 / 03-B 交叉表 / 04 五层 / SKU 末层每张表右上角都有「筛选」，点开出现筛选行——数值列先选符号（&gt; ≥ &lt; ≤ =）再填数值，不用自己敲符号；文本列（维度值 / 场景 / 组名）点「全部 ▾」打开多选面板（全选 / 清空 / 重置 / 应用）；打标列按档位选。03 的合计行与导出跟随筛选结果；03-B 的筛选同时收窄矩阵，矩阵上方会提示「已按筛选条件收窄」并给一个「清除筛选」。收起筛选行不会清条件，切数据版本会清空。`, 
       `<b>排序</b>：点列头排序，再点切换升降序；「清除筛选」清空该层的条件，收起筛选行不会清条件。`,
       `<b>折叠</b>：每个板块标题右上角的箭头可折叠整块，状态记在本地；标题左侧色条与编号是板块识别色。`,
+      `<b>吸顶</b>：滚动时标题栏与筛选卡一直固定在页面顶部（下钻条出现时这三个一起冻结），随时能改条件；点侧栏目录跳转时，板块标题会自动落在吸顶条下方，不会被盖住。`, 
       `<b>异常下钻</b>：01 KPI / 洞察卡、02 异常 KPI 与矩阵、03 场景表里带虚线的数字，点击直接弹窗列出这批 SKU 的全字段（27 列），可排序 / 筛选 / 导出；04 仍是逐级点行下钻。`,
       `<b>导出</b>：列、列名、取值与页面表格完全一致——列数随当前「列分组」与「自定义列」变化（04 默认 17 列 / SKU 末层 27 列 / 03 场景表 26 列 / 交叉表 26 列）；精度同页面（百分 1 位小数、件数取整、天数取整）。04 每层可选「汇总」或「SKU 明细」；SKU 末层另有 4 种模式（与表格同列 / 当前页 / 精简 22 列 / 全部字段 38 列）。03 场景表导出会展开全部子行（屏幕折叠时也导出），交叉表跟随当前排序。范围＝当前筛选与下钻结果；整版数据用页头「全量导出 CSV」（绕过全部筛选）。CSV 为 UTF-8 BOM，Excel 直接打开。`,
       `<b>建议态</b>：调拨建议、促销提报建议、广告调整方向、活动提报均为源表（${DB.version}）输出的建议，不代表已执行；「超达 → 调拨是否跟上」按是否已输出「断货可调入」判断，实际到仓需业务回填。`
@@ -5512,11 +5576,15 @@ function initBlocks(){
 /* 顶部标题栏吸顶，侧栏贴在其下：把实际高度写进 --headh */
 function syncHeadH(){
   const h=document.getElementById('apphead');
+  const k=document.getElementById('stick');
   if(h) document.documentElement.style.setProperty('--headh', Math.round(h.getBoundingClientRect().height)+'px');
+  /* v81：筛选卡吸顶后，锚点要跳过「标题 + 筛选卡」两段高度 */
+  if(k) document.documentElement.style.setProperty('--stickH', Math.round(k.getBoundingClientRect().height)+'px');
 }
 function renderAll(){
   AF=[];
   renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims();
+  try{ syncHeadH(); }catch(e){}   /* 下钻条出现/消失会改变吸顶区高度 */
 }
 let kwTimer=null;
 function boot(){
