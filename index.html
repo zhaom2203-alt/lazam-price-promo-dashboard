@@ -1520,6 +1520,13 @@ section.block{scroll-margin-top:76px}
 .bmeta .mtag .afl:hover{background:rgba(47,91,215,.1)}
 .bmeta .mtag .afl b{text-decoration:none}
 
+/* v80：03 / 03-B 筛选行（复用 04 的控件样式） */
+table.dt tr.filrow .fclear{font-style:normal;cursor:pointer;color:var(--accent);margin-right:4px;
+  display:inline-block;width:14px;text-align:center;border-radius:4px}
+table.dt tr.filrow .fclear:hover{background:#fbe0dd;color:#b3271f}
+table.dt tr.filrow .fmul{max-width:132px}
+table.dt tr.filrow .fnum .fop{width:38px}
+
 </style>
 </head>
 <body>
@@ -2075,6 +2082,7 @@ function setVersion(k){
   Object.keys(dimState).forEach(x=>{ delete dimState[x]; });
   SKU_ST.page=1; SKU_ST.sort='q4'; SKU_ST.dir=-1; SKU_ST.fs=false; SKU_ST.f={};
   SD.sel=null; SD.page=1; SD.exp=false;   /* v79：换版本后旧收窄可能指向不存在的组合 */
+  SCN.f={}; SCN.tx={}; SD.f={}; SD.tx={};   /* v80：列筛选条件也清掉 */
   AF=[]; ANO_FOCUS=null;
   try{ closeSkuList(); }catch(e){}
   const pop=$('#skuPop'); if(pop){ pop.hidden=true; pop.innerHTML=''; }
@@ -3119,7 +3127,7 @@ function renderTrend(m){
 }
 
 /* ---------- 03 场景策略分布（可按维度拆分） ---------- */
-const SCN={dim:'', mode:'nest', exp:{}, page:1, size:100};
+const SCN={dim:'', mode:'nest', exp:{}, page:1, size:100, fs:false, f:{}, tx:{}};
 const SCN_DIMS=[['','不拆分'],['bu','BU'],['own','销售负责人'],['lst','国家Listing'],['sku','SKU']];
 const SCN_COLS=[
   {k:'n',     t:'SKU数',     g:'scale'},
@@ -3216,6 +3224,108 @@ function scnTxt(k,m,ctx){
   return '';
 }
 
+/* ---------- 03 / 03-B 的列筛选（v80）----------
+   与 04 五层同一套控件与判定：数值列「符号 + 数值」、打标列选档位、文本列多选。
+   状态挂在 SCN.f / SCN.tx（03）与 SD.f / SD.tx（03-B）上，与列分组、自定义列互不影响。 */
+const SCN_PCT={np:1,qp:1,rate:1,rateL1:1,wrateL1:1,wrate4:1,pr:1,adp:1,whp:1,
+  lwPr:1,lwAd:1,lwWh:1,acos:1,invp:1};
+const SCN_TAG={tagR:1,tagP:1,tagD:1};
+const SCN_HINT={n:'>10',q:'>100',np:'>5',qp:'>5',f:'>100',rate:'8~13',rateL1:'8~13',
+  wrateL1:'8~13',wrate4:'8~13',gap:'<-50',pr:'8~13',adp:'>6',whp:'>3',lwPr:'8~13',
+  lwAd:'>6',lwWh:'>3',acos:'>10',invp:'>5',invP:'>100',invS:'>100',days:'30~70'};
+function scnFVal(k,m,ctx){
+  if(k==='np')   return (ctx&&ctx.totN)?m.n/ctx.totN:null;
+  if(k==='qp')   return (ctx&&ctx.totQ)?m.q/ctx.totQ:null;
+  if(k==='invp') return (ctx&&ctx.totInv)?m.inv/ctx.totInv:null;
+  if(k==='tagR') return tagR(m.rate).k;
+  if(k==='tagP') return tagP(m.pr).k;
+  if(k==='tagD') return tagD(m.days,m.invP).k;
+  return dimVal(k,m,ctx?ctx.totQ:null);
+}
+/* 百分列按显示值比较（8~13 就是 8%–13%），与 04 同规则 */
+function scnFMatch(m,k,expr,ctx){
+  const raw=scnFVal(k,m,ctx);
+  if(SCN_TAG[k]) return raw===String(expr);
+  if(raw==null) return false;
+  const v=SCN_PCT[k]?Math.round(raw*1000)/10:raw;
+  const fn=fParse(expr);
+  return fn?fn(v):true;
+}
+function gfKeys(st){ return Object.keys(st.f||{}).filter(function(k){ return String(st.f[k]||'').trim(); }); }
+function gfTxKeys(st){ return Object.keys(st.tx||{}).filter(function(k){ return (st.tx[k]||[]).length; }); }
+function gfActive(st){ return gfKeys(st).length+gfTxKeys(st).length; }
+function gfHit(list, val){ return !(list&&list.length) || list.indexOf(String(val))>=0; }
+/* 数值/打标控件共用一套 class：select.gfo + input.gfi（数值列两者都有，打标列只有 select） */
+function gfNumCell(scope,k,st){
+  const cur=String((st.f&&st.f[k])||'');
+  const m=cur.match(/^(>=|<=|>|<|=)\s*(.*)$/);
+  const op=m?m[1]:'', val=m?m[2]:cur;
+  const ph=String(SCN_HINT[k]||'数值').replace(/^[><=≥≤]+\s*/,'');
+  return '<span class="fnum"><select class="fop gfo" data-gs="'+scope+'" data-gk="'+k+'">'+
+    FOPTS.map(function(o){ return '<option value="'+o[0]+'"'+(op===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+    '</select><input class="fin gfi" data-gs="'+scope+'" data-gk="'+k+'" value="'+
+    val.replace(/"/g,'&quot;')+'" placeholder="'+ph+'"></span>';
+}
+function gfTagCell(scope,k,st){
+  const cur=(st.f&&st.f[k])||'', opts=TAG_OPTS[k]||[];
+  return '<select class="fin gfo gtag" data-gs="'+scope+'" data-gk="'+k+'">'+
+    '<option value="">全部</option>'+
+    opts.map(function(o){ return '<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('')+
+    '</select>';
+}
+function gfTxCell(scope,k,st,vals,label){
+  const cur=(st.tx&&st.tx[k])||[];
+  let vj='[]'; try{ vj=JSON.stringify(vals||[]); }catch(e){}
+  return '<button type="button" class="fmul'+(cur.length?' on':'')+'" data-gtx="'+scope+':'+k+'"'+
+    ' data-vals="'+String(vj).replace(/"/g,'&quot;')+'" title="'+(label||'')+' 筛选">'+
+    (cur.length? cur.length+' 项' : '全部')+' <i>▾</i></button>';
+}
+function gfClearIcon(st){
+  return gfActive(st)?'<i class="fclear gclr" title="清除本表所有筛选条件">✕</i> ':'';
+}
+/* 绑定：输入/下拉变化写回 st.f；文本按钮开多选面板 */
+function gfBind(host, scope, st, rerender){
+  if(!host) return;
+  host.querySelectorAll('select.gfo, input.gfi').forEach(function(el){
+    const apply=function(){
+      const k=el.dataset.gk;
+      const op=host.querySelector('select.gfo[data-gk="'+k+'"]');
+      const num=host.querySelector('input.gfi[data-gk="'+k+'"]');
+      let v='';
+      if(num) v=(op?op.value:'')+String(num.value||'').trim();
+      else if(op) v=op.value;
+      if(String(v).trim()) st.f[k]=v; else delete st.f[k];
+      rerender();
+    };
+    if(el.tagName==='SELECT'){ el.onchange=apply; }
+    else{
+      el.oninput=function(){ clearTimeout(fTimer); fTimer=setTimeout(apply,260); };
+      el.onkeydown=function(e){ if(e.key==='Enter'){ clearTimeout(fTimer); apply(); } };
+    }
+  });
+  host.querySelectorAll('[data-gtx]').forEach(function(btn){
+    btn.onclick=function(e){
+      e.stopPropagation();
+      const k=btn.dataset.gtx.split(':')[1];
+      let vals=[]; try{ vals=JSON.parse(btn.dataset.vals||'[]'); }catch(err){}
+      openTxPanel(scope,k,vals,btn,{
+        get:function(kk){ return (st.tx||{})[kk]||[]; },
+        set:function(kk,arr){ st.tx=st.tx||{}; if(arr&&arr.length) st.tx[kk]=arr; else delete st.tx[kk]; },
+        after:rerender
+      });
+    };
+  });
+  host.querySelectorAll('.gclr').forEach(function(b){
+    b.onclick=function(e){ e.stopPropagation(); st.f={}; st.tx={}; rerender(); };
+  });
+}
+/* 筛选按钮（放进各表工具条） */
+function gfBtn(scope,st){
+  const n=gfActive(st);
+  return '<button class="fbtn'+(st.fs?' on':'')+(n?' has':'')+'" data-gfbtn="'+scope+'" '+
+    'title="展开列筛选：数值列选符号 + 填数值；打标列选档位；维度值/场景可多选">筛选'+(n?' '+n:'')+'</button>';
+}
+
 function renderScene(){
   const rows=baseRows();
   $('#s2scope').textContent=`${nf(rows.length)} 个 SKU`;
@@ -3226,6 +3336,14 @@ function renderScene(){
   const totQ=base.reduce((s,g)=>s+g.m.q,0), totN=rows.length, totInv=base.reduce((s,g)=>s+g.m.inv,0);
   const ctx={totQ:totQ,totN:totN,totInv:totInv};
   const all=M(agg(rows));
+  /* v80：列筛选——数值/打标按组内聚合值判，场景名按多选 */
+  const gKeys=gfKeys(SCN), gTx=gfTxKeys(SCN);
+  const shownGroups=base.filter(function(g){
+    if(!gfHit(SCN.tx.scene, g.k)) return false;
+    return gKeys.every(function(k){ return scnFMatch(g.m,k,SCN.f[k],ctx); });
+  });
+  const footRows=shownGroups.reduce(function(a,g){ return a.concat(g.rows); },[]);
+  const allF=footRows.length?M(agg(footRows)):all;   /* 合计跟随筛选结果 */
 
   /* 子组：场景 + 维度值 */
   const kids=new Map();
@@ -3266,6 +3384,7 @@ function renderScene(){
         return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
       }).join('')+'</span>'+
       '<button class="cbtn" data-cols="scn" title="选择要显示的列，可应用到所有表格">自定义列</button>'+
+      gfBtn('scn',SCN)+
       '<span class="scnbtn" id="scnExp">导出 CSV</span>';
     ctl.querySelectorAll('#scnCg [data-cgv]').forEach(function(b){
       b.onclick=function(e){
@@ -3292,8 +3411,21 @@ function renderScene(){
   let head='<th class="l">场景（最新）</th>'+(dim?'<th class="l">'+dimName+'</th>':'')+
     scnCols().map(function(c){ return '<th data-k="'+c.k+'"'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>'; }).join('');
 
-  let body='';
   const colCnt=1+(dim?1:0)+scnCols().length;
+  /* v80：筛选行（开启后才渲染，避免常驻占高） */
+  let filRow='';
+  if(SCN.fs){
+    const colNames=base.map(function(g){ return g.k; });
+    filRow='<tr class="filrow"><td class="l" style="white-space:nowrap">'+gfClearIcon(SCN)+
+      gfTxCell('scn','scene',SCN,colNames,'场景')+'</td>'+
+      (dim?'<td></td>':'')+
+      scnCols().map(function(c){
+        if(c.k.indexOf('tag')===0) return '<td>'+gfTagCell('scn',c.k,SCN)+'</td>';
+        return '<td>'+gfNumCell('scn',c.k,SCN)+'</td>';
+      }).join('')+'</tr>';
+  }
+
+  let body='';
   const allD=(inner)=>drillNum(rows,'全部场景',function(){return true;},inner);
 
   function sceneRow(g){
@@ -3321,7 +3453,7 @@ function renderScene(){
   /* 扁平模式：小计行 + 子行，按场景顺序排列；SKU 维度分页 */
   function flatRows(){
     let out=[], idx=0;
-    base.forEach(function(g){
+    shownGroups.forEach(function(g){
       const arr=kids.get(g.k)||[];
       out.push({type:'sum',sc:g.k,g:g});
       arr.forEach(function(k){ out.push({type:'kid',sc:g.k,val:k.val,g:k.g}); });
@@ -3330,9 +3462,9 @@ function renderScene(){
   }
 
   if(!dim){
-    base.forEach(function(g){ body+=sceneRow(g); });
+    shownGroups.forEach(function(g){ body+=sceneRow(g); });
   }else if(SCN.mode==='nest'){
-    base.forEach(function(g){
+    shownGroups.forEach(function(g){
       body+=sceneRow(g);
       if(SCN.exp[g.k]){
         (kids.get(g.k)||[]).forEach(function(k){ body+=kidRow(g.k,k.val,k.g); });
@@ -3355,15 +3487,22 @@ function renderScene(){
   }
 
   /* 合计行按当前列定义生成：列分组 / 自定义列改了也不会错位（v73） */
-  let foot='<tr><td class="l">汇总</td>'+(dim?'<td></td>':'')+
-    scnCols().map(function(c){ return scnCell(c, all, ctx, function(v){ return v; }); }).join('')+'</tr>';
+  if(!shownGroups.length){
+    body='<tr><td colspan="'+colCnt+'" style="padding:26px;text-align:center;color:var(--muted)">没有符合筛选条件的场景，先清一下条件</td></tr>';
+  }
+  /* 一条都没留下时不摆合计行——否则会出现「表里没数据、合计却是全量」的矛盾 */
+  let foot=footRows.length ? ('<tr><td class="l">汇总'+(gfActive(SCN)?'（已筛选）':'')+'</td>'+(dim?'<td></td>':'')+
+    scnCols().map(function(c){ return scnCell(c, allF, ctx, function(v){ return v; }); }).join('')+'</tr>') : '';
 
   $('#sceneTable').innerHTML='<div class="tbl-wrap"><table class="dt"><thead><tr>'+head+
-    '</tr></thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
+    '</tr>'+filRow+'</thead><tbody>'+body+'</tbody><tfoot>'+foot+'</tfoot></table></div>';
   applyColTips($('#sceneTable'), TIP_DIM);   /* 03 表头也挂口径提示，与 04 同源 */
 
   /* 事件 */
   const host=$('#sceneTable');
+  gfBind(host, 'scn', SCN, renderScene);
+  const gfb=ctl&&ctl.querySelector('[data-gfbtn="scn"]');
+  if(gfb) gfb.onclick=function(e){ e.stopPropagation(); SCN.fs=!SCN.fs; renderScene(); };
   host.querySelectorAll('[data-exp]').forEach(function(sp){
     sp.onclick=function(e){
       e.stopPropagation();
@@ -3405,11 +3544,11 @@ function renderScene(){
       scnCols().forEach(function(c){ row.push(scnTxt(c.k,m,ctx)); });
       lines.push(row.map(csvCell).join(','));
     }
-    base.forEach(function(g){
+    shownGroups.forEach(function(g){          /* v80：与屏幕一致，只导筛选后的场景 */
       pushRow(g.k,'小计',g.m);
       if(dim) (kids.get(g.k)||[]).forEach(function(k){ pushRow(g.k,k.val,k.g.m); });
     });
-    pushRow('汇总','',all);
+    pushRow('汇总','',allF);
     downloadCsv(lines,'场景策略分布'+(dim?'-'+dimName:'')+'_'+DB.version+'.csv');
   };
   const ea=$('#scnExpAll');
@@ -3423,7 +3562,7 @@ function renderScene(){
 
 
 /* ---------- 03-B 场景 × 维度交叉：矩阵导航 + 全字段表 ---------- */
-const SD={dim:'bu', sel:null, sort:'q', dir:-1, page:1, size:40, cg:'all', exp:false};
+const SD={dim:'bu', sel:null, sort:'q', dir:-1, page:1, size:40, cg:'all', exp:false, fs:false, f:{}, tx:{}};
 const SD_DIMS=[['bu','BU'],['own','销售负责人'],['c3','三级分类'],['lst','国家Listing'],['sku','SKU']];
 
 function sdCols(){
@@ -3489,10 +3628,17 @@ function renderSceneDim(){
   if(!hostM||!hostT) return;
   const rows=baseRows();
   const dim=SD.dim, dimName=sdDimName(dim);
-  const combos=sdCombos(rows,dim);
-  const totQ=combos.reduce(function(s,c){ return s+c.m.q; },0);
-  const totInv=combos.reduce(function(s,c){ return s+c.m.inv; },0);
+  const combosAll=sdCombos(rows,dim);
+  const totQ=combosAll.reduce(function(s,c){ return s+c.m.q; },0);
+  const totInv=combosAll.reduce(function(s,c){ return s+c.m.inv; },0);
   const ctx={totQ:totQ, totN:rows.length, totInv:totInv};
+  /* v80：列筛选同时作用于矩阵、明细表与合计，三者不会互相矛盾 */
+  const gK0=gfKeys(SD);
+  const combos=combosAll.filter(function(c){
+    if(!gfHit(SD.tx.dimv, c.v)) return false;
+    if(!gfHit(SD.tx.scene, c.sc)) return false;
+    return gK0.every(function(k){ return scnFMatch(c.m,k,SD.f[k],ctx); });
+  });
 
   /* 顶部控件 */
   const ctl=$('#sdCtl');
@@ -3507,6 +3653,7 @@ function renderSceneDim(){
         return '<b data-cgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
       }).join('')+'</span>'+
       '<button class="cbtn" data-cols="sd" title="选择要显示的列，可应用到所有表格">自定义列</button>'+
+      gfBtn('sd',SD)+
       '<span class="scnbtn" id="sdExp">导出 CSV</span>';
     ctl.querySelectorAll('#sdCg [data-cgv]').forEach(function(b){
       b.onclick=function(e){
@@ -3524,7 +3671,13 @@ function renderSceneDim(){
       };
     });
     const sel=$('#sdDim');
-    if(sel) sel.onchange=function(){ SD.dim=sel.value; SD.sel=null; SD.page=1; SD.exp=false; renderSceneDim(); };
+    if(sel) sel.onchange=function(){
+      SD.dim=sel.value; SD.sel=null; SD.page=1; SD.exp=false;
+      if(SD.tx) delete SD.tx.dimv;          /* 维度值候选随维度变，旧的收窄要作废 */
+      renderSceneDim();
+    };
+    const gfb=ctl.querySelector('[data-gfbtn="sd"]');
+    if(gfb) gfb.onclick=function(e){ e.stopPropagation(); SD.fs=!SD.fs; renderSceneDim(); };
     const ex=$('#sdExp');
     if(ex) ex.onclick=function(){ exportSceneDim(); };
   }
@@ -3555,7 +3708,10 @@ function renderSceneDim(){
     return !!(SD.sel && (!SD.sel.v||SD.sel.v===v) && (!SD.sel.sc||SD.sel.sc===s));
   };
 
-  let mh='<div class="tbl-wrap sdmat"><table><thead><tr>'+
+  let mh=(gfActive(SD)?'<div class="sdbar"><span class="sb1">矩阵已按筛选条件收窄 · 共 <b>'+
+      nf(combos.length)+'</b> 个组合</span>'+
+      '<span style="flex:1"></span><button class="scnbtn" id="sdFclear">清除筛选</button></div>':'')+
+    '<div class="tbl-wrap sdmat"><table><thead><tr>'+
     '<th class="l" style="min-width:120px">'+dimName+'</th>'+
     SC_ORDER.map(function(s){
       return '<th data-msc="'+s+'" title="只看「'+s+'」这个场景">'+
@@ -3580,7 +3736,8 @@ function renderSceneDim(){
       const t=scSum[s];
       return '<td>'+(t?'<span class="sdv">'+t.n+'</span><span class="sdq"> · '+nf(t.q)+'</span>':'—')+'</td>';
     }).join('')+
-    '<td><span class="sdv">'+rows.length+'</span><span class="sdq"> · '+nf(totQ)+'</span></td></tr>';
+    '<td><span class="sdv">'+combos.reduce(function(a,c){ return a+c.n; },0)+
+      '</span><span class="sdq"> · '+nf(combos.reduce(function(a,c){ return a+c.m.q; },0))+'</span></td></tr>';
   mh+='</tbody></table></div>';
   if(vals.length>(shown.length)){
     mh+='<div class="more-row"><button id="sdMore">展开其余 '+(vals.length-shown.length)+' 项 '+dimName+'</button></div>';
@@ -3589,6 +3746,8 @@ function renderSceneDim(){
   }
   hostM.innerHTML=mh;
 
+  const fclr=hostM.querySelector('#sdFclear');
+  if(fclr) fclr.onclick=function(){ SD.f={}; SD.tx={}; renderSceneDim(); };
   hostM.querySelectorAll('[data-mv][data-msc]').forEach(function(td){
     td.onclick=function(){
       const v=td.dataset.mv, s=td.dataset.msc;
@@ -3640,13 +3799,24 @@ function renderSceneDim(){
       return '<option value="'+v+'"'+(SD.size===v?' selected':'')+'>'+v+'</option>';
     }).join('')+'<option value="0"'+(SD.size===0?' selected':'')+'>全部</option></select></div>';
 
+  let filRow='';
+  if(SD.fs){
+    const dv=[]; combosAll.forEach(function(c){ if(dv.indexOf(c.v)<0) dv.push(c.v); });
+    filRow='<tr class="filrow"><td class="l" style="white-space:nowrap">'+gfClearIcon(SD)+
+      gfTxCell('sd','dimv',SD,dv,dimName)+'</td><td class="l">'+
+      gfTxCell('sd','scene',SD,SC_ORDER,'场景')+'</td>'+
+      cols.map(function(c){
+        if(c.k.indexOf('tag')===0) return '<td>'+gfTagCell('sd',c.k,SD)+'</td>';
+        return '<td>'+gfNumCell('sd',c.k,SD)+'</td>';
+      }).join('')+'</tr>';
+  }
   let h=th+'<div class="tbl-wrap"><table class="dt"><thead><tr>'+
     '<th class="l sortable'+sortCls('v')+'" data-sdk="v">'+dimName+ar('v')+'</th>'+
     '<th class="l sortable'+sortCls('sc')+'" data-sdk="sc">场景'+ar('sc')+'</th>'+
     cols.map(function(c){
       if(noSort[c.k]) return '<th'+(c.k.indexOf('tag')===0?' class="tagc"':'')+'>'+c.t+'</th>';
       return '<th class="sortable'+sortCls(c.k)+'" data-sdk="'+c.k+'">'+c.t+ar(c.k)+'</th>';
-    }).join('')+'</tr></thead><tbody>';
+    }).join('')+'</tr>'+filRow+'</thead><tbody>';
 
   view.forEach(function(c){
     h+='<tr data-v="'+ESCA(c.v)+'" data-msc="'+c.sc+'">'+
@@ -3687,6 +3857,7 @@ function renderSceneDim(){
       openSkuList(dimName+' '+v+' · '+s, combos.filter(function(c){ return c.v===v&&c.sc===s; })[0].rows);
     };
   });
+  gfBind(hostT, 'sd', SD, renderSceneDim);
   const clr=$('#sdClear');
   if(clr) clr.onclick=function(){ SD.sel=null; SD.page=1; renderSceneDim(); };
   const sz=$('#sdSize');
@@ -3711,6 +3882,12 @@ function exportSceneDim(){
       return (!SD.sel.v||c.v===SD.sel.v)&&(!SD.sel.sc||c.sc===SD.sel.sc);
     });
   }
+  const gk=gfKeys(SD);
+  list=list.filter(function(c){
+    if(!gfHit(SD.tx.dimv, c.v)) return false;
+    if(!gfHit(SD.tx.scene, c.sc)) return false;
+    return gk.every(function(k){ return scnFMatch(c.m,k,SD.f[k],ctx); });
+  });
   if(!list.length){
     alert('当前收窄条件下没有可导出的组合，请先取消筛选或切换维度。');
     return;
@@ -5276,7 +5453,7 @@ function renderFoot(){
     ]},
     {h:'交互与导出', items:[
       `<b>列分组</b>：03 / 04 / SKU 末层的「全部 / 规模 / 达成 / 利润 / 库存」可多选，导出跟随当前选择；04 默认「达成 + 利润」（17 列）。<b>自定义列</b>：表右上角「自定义列」可逐列勾选（可按名称搜索），底部「全选 / 清空 / 默认 / 应用全局 / 完成」——「应用全局」把同一套列应用到所有表，「默认」回到列分组预设；设置记在本地，刷新后保持。`,
-      `<b>列筛选</b>：数值列先选符号（&gt; ≥ &lt; ≤ =）再填数值，不用自己敲符号；文本列点「全部 ▾」打开多选面板（全选 / 清空 / 重置 / 应用），可多值同时筛；打标列按档位选。`, 
+      `<b>列筛选</b>：03 场景表 / 03-B 交叉表 / 04 五层 / SKU 末层每张表右上角都有「筛选」，点开出现筛选行——数值列先选符号（&gt; ≥ &lt; ≤ =）再填数值，不用自己敲符号；文本列（维度值 / 场景 / 组名）点「全部 ▾」打开多选面板（全选 / 清空 / 重置 / 应用）；打标列按档位选。03 的合计行与导出跟随筛选结果；03-B 的筛选同时收窄矩阵，矩阵上方会提示「已按筛选条件收窄」并给一个「清除筛选」。收起筛选行不会清条件，切数据版本会清空。`, 
       `<b>排序</b>：点列头排序，再点切换升降序；「清除筛选」清空该层的条件，收起筛选行不会清条件。`,
       `<b>折叠</b>：每个板块标题右上角的箭头可折叠整块，状态记在本地；标题左侧色条与编号是板块识别色。`,
       `<b>异常下钻</b>：01 KPI / 洞察卡、02 异常 KPI 与矩阵、03 场景表里带虚线的数字，点击直接弹窗列出这批 SKU 的全字段（27 列），可排序 / 筛选 / 导出；04 仍是逐级点行下钻。`,
