@@ -1597,6 +1597,18 @@ section.block{scroll-margin-top:16px}
 .sidenav .navi[href="#secFoot"]{margin-top:auto}
 #secFoot{scroll-margin-top:16px}
 
+/* ===== v89：重点低达/超达 Listing 展开样式 ===== */
+.lst-tog{cursor:pointer;text-align:center;vertical-align:middle}
+.lst-tog:hover{background:var(--row-hover)}
+.lst-expand td{padding:0}
+.sub-sku{width:100%;border-collapse:collapse;font-size:12px}
+.sub-sku th{background:#f0f3f8;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
+.sub-sku td{padding:3px 8px;border-bottom:1px solid #eef1f6}
+.sub-sku tr:hover td{background:var(--row-hover)}
+.sub-sku .rchip,.sub-sku .tagc{font-size:10px}
+#secLow{scroll-margin-top:16px}
+#secHi{scroll-margin-top:16px}
+
 </style>
 </head>
 <body>
@@ -1765,6 +1777,22 @@ section.block{scroll-margin-top:16px}
         </div>
         <div id="dimHost"></div>
         <div class="legend" id="dimLegend"></div>
+
+      <section class="block" id="secLow">
+        <div class="block-head">
+          <div class="btitle"><span class="bnum">05</span><h2>重点低达 Listing</h2><span class="cnt" id="s5lowScope"></span></div>
+          <p class="bsub">筛选逻辑：剔除淘汰SKU后按Listing聚合，最新周预测达成 &lt;70% 且加权达成 &lt;70% 且4周订单 &gt;100（在售SKU口径）</p>
+        </div>
+        <div id="lowHost"></div>
+      </section>
+
+      <section class="block" id="secHi">
+        <div class="block-head">
+          <div class="btitle"><span class="bnum">06</span><h2>重点超达 Listing</h2><span class="cnt" id="s5hiScope"></span></div>
+          <p class="bsub">筛选逻辑：剔除淘汰SKU后按Listing聚合，最新周预测达成 &gt;110% 且加权达成 &gt;100%（在售SKU口径）</p>
+        </div>
+        <div id="hiHost"></div>
+      </section>
       </section>
 
       <footer id="secFoot">
@@ -2242,6 +2270,8 @@ const NAV=[
   {id:'dim2', t:'三级分类', sub:1, sh:'分类'},
   {id:'dim3', t:'国家Listing', sub:1, sh:'LIST'},
   {id:'dim4', t:'SKU', sub:1, sh:'SKU'},
+  {id:'secLow', n:'05', t:'重点低达Listing', ic:'layers'},
+  {id:'secHi',  n:'06', t:'重点超达Listing', ic:'layers'},
   {id:'secFoot', t:'口径与说明', ic:'info'}
 ];
 /* 收起状态：窄栏只留图标 / 短标签，点 « » 切换，记在 localStorage */
@@ -4353,6 +4383,146 @@ function renderAno(){
 }
 
 /* ---------- 05 ---------- */
+
+/* ---------- 05 重点低达/超达 Listing（v89） ---------- */
+/* 在售 SKU（剔除淘汰） → 按 Listing 聚合 → 用判定条件筛选 → 复用 dimCell 渲染 */
+
+function onSaleListings(){
+  const rows=baseRows().filter(function(r){ return r.elim===0; });  /* 剔除淘汰 */
+  const grps=groupBy(rows,'lst');
+  return grps.map(function(g){
+    return {k:g.k, rows:g.rows, m:M(agg(g.rows))};
+  });
+}
+
+/* 低达判定：最新周最新版达成 <70% && 加权达成 <70% && 4周订单 >100 */
+function lowLstFilter(g){
+  const m=g.m;
+  return m.rateL1!=null && m.wrateL1!=null && m.rateL1<0.7 && m.wrateL1<0.7 && m.q>100;
+}
+
+/* 超达判定：最新周最新版达成 >110% && 加权达成 >100% */
+function hiLstFilter(g){
+  const m=g.m;
+  return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0;
+}
+
+/* 共用渲染：接收 filtered listing 分组 + 宿主 DOM id + 副标题 */
+function renderLstBlock(groups, hostId, scopeId, subtitle){
+  const host=$(hostId); if(!host) return;
+  host.innerHTML='';
+  if(!groups.length){
+    host.innerHTML='<div class="empty">当前数据未筛选出符合条件的 Listing（在售 SKU 口径）</div>';
+    if(scopeId) $(scopeId).textContent='0 个';
+    return;
+  }
+  if(scopeId) $(scopeId).textContent=nf(groups.length)+' 个';
+
+  /* 全部在售 SKU 汇总（不再传淘汰数据） */
+  const all=M(agg(groups.reduce(function(a,g){ return a.concat(g.rows); },[])));
+
+  /* 排序：降序按 4周订单（可改为按达成率排序，这里先按订单） */
+  groups.sort(function(a,b){ return b.m.q - a.m.q; });
+
+  const i=3;  /* 复刻国家Listing层（层级索引 3），带 c3x/ownx 列 */
+  const cols=dimColsOf(i);
+  const exCols=DIM_EXTRA[i]||[];
+  /* 表头后加一列「SKU」用于展开图标 */
+  const allCols=cols.concat([{k:'_toggle', t:'SKU', type:'toggle'}]);
+
+  /* 表头 */
+  let h='<div class="tbl-wrap"><table class="dt"><thead><tr>';
+  allCols.forEach(function(c){
+    if(c.k==='_rk')    h+='<th style="width:32px">#</th>';
+    else if(c.k==='_name')  h+='<th class="l">国家Listing</th>';
+    else if(c.type==='txt') h+='<th class="l">'+c.t+'</th>';
+    else if(c.type==='tag') h+='<th class="l" style="width:'+(c.w||72)+'px">'+c.t+'</th>';
+    else if(c.type==='toggle') h+='<th style="width:48px"></th>';
+    else if(c.k==='sc')  h+='<th class="l" style="width:112px">'+c.t+'</th>';
+    else h+='<th'+(c.tip?' title="'+c.tip+'"':'')+'>'+c.t+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+
+  groups.forEach(function(g,idx){
+    const m=g.m;
+    const ctx={i:i, rank:idx+1, name:String(g.k), all:all};
+    h+='<tr data-lst="'+String(g.k).replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" class="lst-row">';
+    cols.forEach(function(c){ h+=dimCell(c,m,ctx); });
+    /* SKU 展开图标 */
+    h+='<td class="lst-tog" data-toggle="'+String(g.k).replace(/"/g,'&quot;')+'" title="展开/收起 SKU 明细">'+
+      '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
+      '<polyline points="4 6,8 10,12 6"/></svg></td>';
+    h+='</tr>';
+  });
+  h+='</tbody><tfoot><tr>';
+  const sumCtx={i:i, rank:'', name:'合计（在售SKU口径，n='+nf(all.n)+'）', all:all};
+  allCols.forEach(function(c){
+    if(c.k==='_rk') h+='<td class="l"></td>';
+    else if(c.k==='_name') h+='<td class="l">'+sumCtx.name+'</td>';
+    else if(c.k==='sc'||c.k==='c3x'||c.k==='ownx'||c.k==='_toggle') h+='<td class="l"></td>';
+    else h+=dimCell(c,all,sumCtx);
+  });
+  h+='</tr></tfoot></table></div>';
+  host.innerHTML=h;
+
+  /* 绑定展开/收起事件 */
+  host.querySelectorAll('td.lst-tog').forEach(function(td){
+    td.onclick=function(e){
+      e.stopPropagation();
+      const lstKey=td.dataset.toggle;
+      const grp=groups.find(function(g){ return String(g.k)===lstKey; });
+      if(!grp) return;
+      /* 如果已有展开行，先移除 */
+      const existing=host.querySelector('tr.lst-expand[data-expand="'+String(lstKey).replace(/"/g,'\"')+'"]');
+      if(existing){
+        existing.remove();
+        td.querySelector('svg').innerHTML='<polyline points="4 6,8 10,12 6"/>';
+        return;
+      }
+      /* 展开：紧随该行插入 SKU 明细行 */
+      const parentRow=td.closest('tr.lst-row');
+      const expandRow=document.createElement('tr');
+      expandRow.className='lst-expand';
+      expandRow.dataset.expand=String(lstKey).replace(/"/g,'&quot;');
+      const expandTd=document.createElement('td');
+      expandTd.colSpan=allCols.length;
+      expandTd.innerHTML=renderLstSkuSub(grp.rows);
+      expandRow.appendChild(expandTd);
+      parentRow.insertAdjacentElement('afterend',expandRow);
+      td.querySelector('svg').innerHTML='<polyline points="6 4,10 8,6 12"/>';
+    };
+  });
+}
+
+/* Listing 下 SKU 明细子表 */
+function renderLstSkuSub(rows){
+  const cols=skuCols();
+  let h='<table class="dt sub-sku"><thead><tr>';
+  cols.forEach(function(c){
+    if(c[3]==='dim') h+='<th class="l">'+c[1]+'</th>';
+    else h+='<th>'+c[1]+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+  rows.sort(function(a,b){ return b.q4 - a.q4; });
+  rows.forEach(function(r){
+    h+='<tr>'+cols.map(function(c){ return skuCell(r,c); }).join('')+'</tr>';
+  });
+  h+='</tbody></table>';
+  return h;
+}
+
+function renderLowLst(){
+  const grps=onSaleListings();
+  const low=grps.filter(lowLstFilter);
+  renderLstBlock(low,'lowHost','s5lowScope');
+}
+
+function renderHiLst(){
+  const grps=onSaleListings();
+  const hi=grps.filter(hiLstFilter);
+  renderLstBlock(hi,'hiHost','s5hiScope');
+}
+
 function cmpBar(sc,tot){
   let h='';
   SC_ORDER.forEach(s=>{const v=sc[s]||0; if(v) h+=`<i style="width:${v/tot*100}%;background:${scColor(s)}" title="${s} ${v}"></i>`;});
@@ -5620,7 +5790,7 @@ function syncHeadH(){
 }
 function renderAll(){
   AF=[];
-  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims();
+  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims(); renderLowLst(); renderHiLst();
   try{ syncHeadH(); }catch(e){}   /* 下钻条出现/消失会改变吸顶区高度 */
 }
 let kwTimer=null;
