@@ -1581,6 +1581,18 @@ section.block{scroll-margin-top:calc(var(--headh,60px) + var(--stickH,74px) + 10
   .apphead{padding:8px 16px 9px}
 }
 
+/* ===== v86：取消头部冻结——顶栏与筛选卡都跟随页面滚动（只留侧栏固定） =====
+   原因：v81~v85 一直靠「吸顶 + 跳转偏移补偿」处理锚点，但吸顶区高度会随下钻条变化，
+   补偿量算不准就盖住板块标题；地址栏 hash 直达走的是原生跳转，绕不过去。
+   改为整个顶部随页滚动后，标题在任何跳转方式下都不会被遮挡。 */
+.apphead{position:static;z-index:auto}
+.app>.sidenav{top:0;height:100vh}
+.stick{position:static;top:auto;z-index:auto}
+section.block{scroll-margin-top:16px}
+.subblock{scroll-margin-top:16px}
+#secAno,#sec2,#sec5{scroll-margin-top:16px}
+[id^="dim"]{scroll-margin-top:18px}
+
 </style>
 </head>
 <body>
@@ -5582,16 +5594,12 @@ function initBlocks(){
 
 /* ---------- 启动 ---------- */
 /* 顶部标题栏吸顶，侧栏贴在其下：把实际高度写进 --headh */
-/* v85：锚点跳转按「顶栏 + 吸顶区」的实际高度算，不依赖 CSS 变量——
-   sticky 区高度会随下钻条出现/消失变化，只靠 scroll-margin 很容易算漏导致标题被盖 */
+/* v86：取消头部冻结后，顶部不再覆盖内容，跳转只需留一点呼吸位。
+   与 CSS 的 scroll-margin-top(16/18) 保持一致，hash 直达与 JS 跳转落点相同 */
 function scrollToEl(el, gap){
   if(!el) return;
-  const hd=document.getElementById('apphead');
-  const st=document.getElementById('stick');
-  const head=hd?hd.getBoundingClientRect().height:0;
-  const stick=st?st.getBoundingClientRect().height:0;
-  const g=(gap==null?14:gap);
-  const y=el.getBoundingClientRect().top+window.pageYOffset-head-stick-g;
+  const g=(gap==null?16:gap);
+  const y=el.getBoundingClientRect().top+window.pageYOffset-g;
   window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
 }
 function syncHeadH(){
