@@ -2261,7 +2261,7 @@ function renderNav(){
       (it.sh?'<span class="nsh">'+it.sh+'</span>':''));
     a.href='#'+it.id;
     a.title=it.t;
-    a.onclick=e=>{e.preventDefault();const t=document.getElementById(it.id); if(t)t.scrollIntoView({behavior:'smooth',block:'start'});};
+    a.onclick=e=>{e.preventDefault();scrollToEl(document.getElementById(it.id));};
     n.appendChild(a);
   });
   const up=el('a','navi up','<span class="nt">回到顶部</span><span class="nsh">↑</span>');
@@ -2293,7 +2293,7 @@ function focusSku(label, pred){
   const host=document.getElementById('dim'+(DIMDEF.length-1));
   if(host){
     setTimeout(function(){
-      host.scrollIntoView({behavior:'smooth', block:'start'});
+      scrollToEl(host,18);
       host.classList.add('focused');
       setTimeout(function(){ host.classList.remove('focused'); }, 1700);
     }, 70);
@@ -4926,7 +4926,7 @@ function renderDims(){
       const i=+tr.dataset.i, v=tr.dataset.v;
       F.path=F.path.slice(0,i).concat([{f:DIMDEF[i].f,v}]);
       renderAll();
-      setTimeout(()=>{const t=document.getElementById('dim'+Math.min(i+1,DIMDEF.length-1)); if(t)t.scrollIntoView({behavior:'smooth',block:'start'});},90);
+      setTimeout(()=>{scrollToEl(document.getElementById('dim'+Math.min(i+1,DIMDEF.length-1)),18);},90);
     };
   });
   /* 只绑定维度层表头；SKU 层表头带 data-k 无 data-i，由 renderSkuTable 自己管 */
@@ -5021,7 +5021,7 @@ function renderDims(){
   });
   host.querySelectorAll('button[data-more]').forEach(b=>{
     b.onclick=()=>{const i=+b.dataset.more; dimState[i]=dimState[i]||{}; dimState[i].expand=!dimState[i].expand; renderDims();
-      document.getElementById('dim'+i).scrollIntoView({behavior:'smooth',block:'start'});};
+      scrollToEl(document.getElementById('dim'+i),18);};
   });
 
   $('#dimLegend').innerHTML=SC_ORDER.map(s=>`<span class="item"><i class="sw" style="background:${scColor(s)}"></i>${s}</span>`).join('')+
@@ -5317,8 +5317,8 @@ function renderSkuTable(all, idx){
     tr.onclick=()=>openSku(tr.dataset.sku);
   });
   const pv=host.querySelector('#skPrev'), nx=host.querySelector('#skNext');
-  if(pv)pv.onclick=()=>{if(SKU_ST.page>1){SKU_ST.page--;renderSkuTable(all,idx);document.getElementById('dim'+idx).scrollIntoView({behavior:'smooth',block:'start'});}};
-  if(nx)nx.onclick=()=>{if(SKU_ST.page<pages){SKU_ST.page++;renderSkuTable(all,idx);document.getElementById('dim'+idx).scrollIntoView({behavior:'smooth',block:'start'});}};
+  if(pv)pv.onclick=()=>{if(SKU_ST.page>1){SKU_ST.page--;renderSkuTable(all,idx);scrollToEl(document.getElementById('dim'+idx),18);}};
+  if(nx)nx.onclick=()=>{if(SKU_ST.page<pages){SKU_ST.page++;renderSkuTable(all,idx);scrollToEl(document.getElementById('dim'+idx),18);}};
 
   const sz=host.querySelector('#skuSize');
   if(sz)sz.onchange=()=>{SKU_ST.size=+sz.value; SKU_ST.page=1; renderSkuTable(all,idx);};
@@ -5582,6 +5582,18 @@ function initBlocks(){
 
 /* ---------- 启动 ---------- */
 /* 顶部标题栏吸顶，侧栏贴在其下：把实际高度写进 --headh */
+/* v85：锚点跳转按「顶栏 + 吸顶区」的实际高度算，不依赖 CSS 变量——
+   sticky 区高度会随下钻条出现/消失变化，只靠 scroll-margin 很容易算漏导致标题被盖 */
+function scrollToEl(el, gap){
+  if(!el) return;
+  const hd=document.getElementById('apphead');
+  const st=document.getElementById('stick');
+  const head=hd?hd.getBoundingClientRect().height:0;
+  const stick=st?st.getBoundingClientRect().height:0;
+  const g=(gap==null?14:gap);
+  const y=el.getBoundingClientRect().top+window.pageYOffset-head-stick-g;
+  window.scrollTo({top:Math.max(0,y),behavior:'smooth'});
+}
 function syncHeadH(){
   const h=document.getElementById('apphead');
   const k=document.getElementById('stick');
