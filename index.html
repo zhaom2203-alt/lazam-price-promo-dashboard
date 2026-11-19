@@ -1597,17 +1597,32 @@ section.block{scroll-margin-top:16px}
 .sidenav .navi[href="#secFoot"]{margin-top:auto}
 #secFoot{scroll-margin-top:16px}
 
-/* ===== v89：重点低达/超达 Listing 展开样式 ===== */
-.lst-tog{cursor:pointer;text-align:center;vertical-align:middle}
-.lst-tog:hover{background:var(--row-hover)}
-.lst-expand td{padding:0}
-.sub-sku{width:100%;border-collapse:collapse;font-size:12px}
-.sub-sku th{background:#f0f3f8;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)}
-.sub-sku td{padding:3px 8px;border-bottom:1px solid #eef1f6}
-.sub-sku tr:hover td{background:var(--row-hover)}
-.sub-sku .rchip,.sub-sku .tagc{font-size:10px}
-#secLow{scroll-margin-top:16px}
-#secHi{scroll-margin-top:16px}
+/* ===== v90：重点低达 / 超达 Listing（05 / 06） ===== */
+/* 与 04 各层视觉一致：同一套 .subblock / .dt，不额外造样式 */
+#secLow,#secHi{scroll-margin-top:16px}
+.lst-sec .subblock-head h3{font-size:13px}
+/* Listing 名 + 展开图标：名字左、箭头贴名字右侧，不撑破列宽 */
+.lst-row .nm{white-space:nowrap;max-width:220px}
+.lst-row .nm .lnm{vertical-align:middle}
+button.lstexp{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;margin-left:6px;padding:0;vertical-align:middle;
+  border:1px solid var(--border);border-radius:5px;background:#fff;color:var(--muted);
+  cursor:pointer;transition:all .12s;
+}
+button.lstexp:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft,#eef3ff)}
+button.lstexp.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft,#eef3ff)}
+/* 展开行：整宽，内含 SKU 子表 */
+tr.lst-exp-row>td{padding:0;background:#fafbfe;border-top:1px dashed var(--border)}
+.lst-sub-wrap{padding:10px 12px 12px}
+.lst-sub-hd{font-size:12px;color:var(--muted);margin-bottom:8px}
+.lst-sub-hd b{color:var(--text,#1f2733)}
+.lst-sub{font-size:12px;min-width:1180px}
+.lst-sub th{background:#f0f3f8;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;padding:4px 7px}
+.lst-sub td{padding:3px 7px;border-bottom:1px solid #eef1f6;white-space:nowrap}
+.lst-sub tbody tr:hover td{background:var(--row-hover,#f4f7fd);cursor:pointer}
+.lst-sub .rchip,.lst-sub .tagc{font-size:10px}
+.lst-sub-wrap>.tbl-wrap{max-height:none}
 
 </style>
 </head>
@@ -1777,11 +1792,13 @@ section.block{scroll-margin-top:16px}
         </div>
         <div id="dimHost"></div>
         <div class="legend" id="dimLegend"></div>
+      </section>
 
+      <!-- 05 -->
       <section class="block" id="secLow">
         <div class="block-head">
           <div class="btitle"><span class="bnum">05</span><h2>重点低达 Listing</h2><span class="cnt" id="s5lowScope"></span></div>
-          <p class="bsub">筛选逻辑：剔除淘汰SKU后按Listing聚合，最新周预测达成 &lt;70% 且加权达成 &lt;70% 且4周订单 &gt;100（在售SKU口径）</p>
+          <p class="bsub">在售 SKU 口径（剔除淘汰 SKU）→ 按 Listing 聚合 → 最新周·最新版达成 &lt;70% 且 最新周·加权达成 &lt;70% 且 4 周订单 &gt;100</p>
         </div>
         <div id="lowHost"></div>
       </section>
@@ -1789,10 +1806,9 @@ section.block{scroll-margin-top:16px}
       <section class="block" id="secHi">
         <div class="block-head">
           <div class="btitle"><span class="bnum">06</span><h2>重点超达 Listing</h2><span class="cnt" id="s5hiScope"></span></div>
-          <p class="bsub">筛选逻辑：剔除淘汰SKU后按Listing聚合，最新周预测达成 &gt;110% 且加权达成 &gt;100%（在售SKU口径）</p>
+          <p class="bsub">在售 SKU 口径（剔除淘汰 SKU）→ 按 Listing 聚合 → 最新周·最新版达成 &gt;110% 且 最新周·加权达成 &gt;100%</p>
         </div>
         <div id="hiHost"></div>
-      </section>
       </section>
 
       <footer id="secFoot">
@@ -4384,143 +4400,314 @@ function renderAno(){
 
 /* ---------- 05 ---------- */
 
-/* ---------- 05 重点低达/超达 Listing（v89） ---------- */
-/* 在售 SKU（剔除淘汰） → 按 Listing 聚合 → 用判定条件筛选 → 复用 dimCell 渲染 */
+/* ---------- 05 重点低达 / 06 重点超达 Listing（v90） ---------- */
+/* 口径：剔除淘汰 SKU（elim===1）→ 按 Listing 聚合 → 最新周达成判定 → 复用 04 国家Listing 层全套功能
+   最新周·最新版达成 = Σ最新周订单 ÷ Σ最新版预测（M.rateL1）
+   最新周·加权达成   = Σ最新周订单 ÷ Σ加权预测   （M.wrateL1）          */
 
-function onSaleListings(){
-  const rows=baseRows().filter(function(r){ return r.elim===0; });  /* 剔除淘汰 */
-  const grps=groupBy(rows,'lst');
-  return grps.map(function(g){
-    return {k:g.k, rows:g.rows, m:M(agg(g.rows))};
-  });
+var LST_SECTIONS=[
+  {n:5, id:'lowHost', scopeId:'s5lowScope', name:'重点低达 Listing', short:'重点低达',
+   sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &lt;70% 且 最新周·加权达成 &lt;70% 且 4周订单 &gt;100',
+   pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1<0.7 && m.wrateL1<0.7 && m.q>100; }},
+  {n:6, id:'hiHost', scopeId:'s5hiScope', name:'重点超达 Listing', short:'重点超达',
+   sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &gt;110% 且 最新周·加权达成 &gt;100%',
+   pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0; }}
+];
+
+/* 每个板块一份独立视图状态：排序 / 筛选 / 列分组 / 展开 */
+var LST_ST={};
+var LST_OPEN={};
+LST_SECTIONS.forEach(function(s){
+  LST_ST[s.n]={sort:'q',dir:-1,fs:false,f:{},tx:{},expand:false,cg:'all'};
+  LST_OPEN[s.n]={};
+});
+
+/* 展开箭头 / 收起箭头 */
+var LST_CHEV='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 6,8 10,12 6"/></svg>';
+var LST_CHEV_UP='<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10,8 6,12 10"/></svg>';
+
+function lstEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
-
-/* 低达判定：最新周最新版达成 <70% && 加权达成 <70% && 4周订单 >100 */
-function lowLstFilter(g){
-  const m=g.m;
-  return m.rateL1!=null && m.wrateL1!=null && m.rateL1<0.7 && m.wrateL1<0.7 && m.q>100;
+/* 文本列多选按钮：05/06 专用（走 data-ltx → openTxPanel 的 ctx 模式，不写 dimState） */
+function lstTxBtn(n,k,st,vals,label){
+  const cur=(st.tx&&st.tx[k])||[];
+  let vj='[]'; try{ vj=JSON.stringify(vals||[]); }catch(e){}
+  return '<button type="button" class="fmul'+(cur.length?' on':'')+'" data-ltx="'+n+':'+k+'"'+
+    ' data-vals="'+String(vj).replace(/"/g,'&quot;')+'" title="'+(label||'')+' 筛选">'+
+    (cur.length? cur.length+' 项':'全部')+' <i>▾</i></button>';
 }
-
-/* 超达判定：最新周最新版达成 >110% && 加权达成 >100% */
-function hiLstFilter(g){
-  const m=g.m;
-  return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0;
+/* 05/06 的列定义 = 04 国家Listing 层（含 三级分类 / 销售负责人 + 场景构成） */
+function lstAllCols(){
+  return [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(DIM_EXTRA[3]||[], DIM_ALLCOLS.slice(2));
 }
+function lstColsOf(n){
+  const all=lstAllCols();
+  const cg=(LST_ST[n]&&LST_ST[n].cg)||'rate+profit';
+  const base=(cg==='all')?all:all.filter(function(c){ return !c.g||c.g==='dim'||cg.split('+').indexOf(c.g)>=0; });
+  return colxCols('lst'+n, base);
+}
+/* 在售口径：显式剔除淘汰 SKU，不依赖全局「SKU状态」筛选 */
+function lstOnSaleRows(){
+  return baseRows().filter(function(r){ return r.elim===0; });
+}
+function lstAllGroups(){ return groupBy(lstOnSaleRows(),'lst'); }
 
-/* 共用渲染：接收 filtered listing 分组 + 宿主 DOM id + 副标题 */
-function renderLstBlock(groups, hostId, scopeId, subtitle){
-  const host=$(hostId); if(!host) return;
-  host.innerHTML='';
+/* ---- 渲染入口 ---- */
+function renderLstSections(){ LST_SECTIONS.forEach(function(S){ renderLstBlock(S); }); }
+
+function renderLstBlock(S){
+  const n=S.n, st=LST_ST[n];
+  const host=document.getElementById(S.id); if(!host) return;
+  const _sy=window.scrollY;
+  st.f=st.f||{}; st.tx=st.tx||{};
+
+  const allGroups=lstAllGroups();
+  const groups=allGroups.filter(function(g){ return S.pick(g.m); });
+  const chip=document.getElementById(S.scopeId);
+  if(chip) chip.textContent=nf(groups.length)+' 个 Listing';
+
+  const sumRows=groups.reduce(function(a,g){ return a.concat(g.rows); },[]);
+  const all=M(agg(sumRows));
+  const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k]&&String(st.f[k]).trim(); });
+  const txCnt=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; }).length;
+  const gNames=groups.map(function(g){ return String(g.k); });
+
   if(!groups.length){
-    host.innerHTML='<div class="empty">当前数据未筛选出符合条件的 Listing（在售 SKU 口径）</div>';
-    if(scopeId) $(scopeId).textContent='0 个';
+    host.innerHTML='<div class="empty" style="padding:20px 6px;line-height:2;text-align:center">'+
+      '本版无符合条件的 <b>'+S.name+'</b><br>'+
+      '<span style="color:var(--muted);font-size:12.5px">筛选条件：'+S.sub+'<br>'+
+      '在售 SKU '+nf(lstOnSaleRows().length)+' 个 → 聚合为 '+nf(allGroups.length)+' 个 Listing → 命中 0 个。条件本身有效，换数据周期后会自动出现。</span></div>';
+    if(_sy) window.scrollTo(0,_sy);
     return;
   }
-  if(scopeId) $(scopeId).textContent=nf(groups.length)+' 个';
 
-  /* 全部在售 SKU 汇总（不再传淘汰数据） */
-  const all=M(agg(groups.reduce(function(a,g){ return a.concat(g.rows); },[])));
+  let h='<div class="subblock lst-sec" id="lst'+n+'">';
+  h+='<div class="subblock-head">'+
+     '<h3><span class="sn">'+n+'</span>'+S.name+'</h3>'+
+     '<span class="cnt">'+nf(groups.length)+' 项 · '+nf(sumRows.length)+' SKU</span>'+
+     '<button class="fbtn'+(st.fs?' on':'')+((fKeys.length+txCnt)?' has':'')+'" data-lfbtn="'+n+'" title="展开列筛选：数值列选符号 + 填数值；文本列点「全部 ▾」多选；打标列选档位">筛选'+((fKeys.length+txCnt)?' '+(fKeys.length+txCnt):'')+'</button>'+
+     '<span class="cgseg" data-lcgseg="'+n+'" title="按用途只显示相关列；导出跟随当前选择">'+['all','scale','rate','profit','inv'].map(function(g){
+        const on=(g==='all')?(st.cg==='all'):(st.cg!=='all'&&st.cg.split('+').indexOf(g)>=0);
+        const nm={all:'全部',scale:'规模',rate:'达成',profit:'利润',inv:'库存'}[g];
+        return '<b data-lcgv="'+g+'" class="'+(on?'on':'')+'">'+nm+'</b>';
+     }).join('')+'</span>'+
+     '<button class="cbtn" data-cols="lst'+n+'" title="选择要显示的列，可应用到所有表格">自定义列</button>'+
+     '<span class="dimexp">'+
+       '<select class="sksel expsel" data-lexpsel="'+n+'" title="导出内容：汇总＝按 Listing 聚合；SKU 明细＝逐行">'+
+       '<option value="sum">汇总 · '+groups.length+' 行</option>'+
+       '<option value="sku">SKU 明细 · '+nf(sumRows.length)+' 行</option></select>'+
+       '<button class="expbtn mini" data-lexpgo="'+n+'">导出 CSV</button></span>'+
+     '</div>';
 
-  /* 排序：降序按 4周订单（可改为按达成率排序，这里先按订单） */
-  groups.sort(function(a,b){ return b.m.q - a.m.q; });
+  /* 排序 */
+  const cols=lstColsOf(n);
+  const exCols=DIM_EXTRA[3]||[];
+  const exVals={c3x:Object.keys(all.c3c||{}), ownx:Object.keys(all.ownc||{})};
+  const sortKey=st.sort||'q', dir=st.dir===1?1:-1;
+  const getter={q:g=>g.m.q,qp:g=>g.m.q,f:g=>g.m.f||0,rate:g=>g.m.rate,n:g=>g.m.n,pr:g=>g.m.pr,
+    rateL1:g=>g.m.rateL1,wrateL1:g=>g.m.wrateL1,wrate4:g=>g.m.wrate4,
+    days:g=>g.m.days,gap:g=>g.m.gapW,
+    invP:g=>g.m.invP,invS:g=>g.m.invS,whp:g=>g.m.whp,adp:g=>g.m.adp,acos:g=>g.m.acos,
+    lwPr:g=>g.m.lwPr,lwAd:g=>g.m.lwAd,lwWh:g=>g.m.lwWh}[sortKey]||(g=>g.m.q);
+  groups.sort(function(a,b){
+    const x=getter(a), y=getter(b);
+    const xv=(x==null||x!==x), yv=(y==null||y!==y);
+    if(xv&&yv) return 0;
+    if(xv) return 1;
+    if(yv) return -1;
+    return (x-y)*dir;
+  });
 
-  const i=3;  /* 复刻国家Listing层（层级索引 3），带 c3x/ownx 列 */
-  const cols=dimColsOf(i);
-  const exCols=DIM_EXTRA[i]||[];
-  /* 表头后加一列「SKU」用于展开图标 */
-  const allCols=cols.concat([{k:'_toggle', t:'SKU', type:'toggle'}]);
+  /* 列筛选 */
+  let shown=groups;
+  if(fKeys.length) shown=shown.filter(function(g){ return fKeys.every(function(k){ return dimFMatch(g,k,st.f[k],all.q); }); });
+  const txKeys=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; });
+  if(txKeys.length) shown=shown.filter(function(g){
+    return txKeys.every(function(k){
+      const v=String(dimFVal(g,k,all.q));
+      return st.tx[k].map(String).indexOf(v)>=0;
+    });
+  });
+  renderLstBlock._shown=renderLstBlock._shown||{};
+  renderLstBlock._shown[n]=shown;
 
-  /* 表头 */
-  let h='<div class="tbl-wrap"><table class="dt"><thead><tr>';
-  allCols.forEach(function(c){
-    if(c.k==='_rk')    h+='<th style="width:32px">#</th>';
-    else if(c.k==='_name')  h+='<th class="l">国家Listing</th>';
+  const sk=k=>sortKey===k?' sorted':'';
+  const ar=k=>sortKey===k?'<span class="sk">'+(dir<0?'▼':'▲')+'</span>':'';
+
+  h+='<div class="tbl-wrap"><table class="dt"><thead><tr>';
+  cols.forEach(function(c){
+    if(c.k==='_rk')    h+='<th style="width:30px">#</th>';
+    else if(c.k==='_name') h+='<th class="l">国家Listing</th>';
     else if(c.type==='txt') h+='<th class="l">'+c.t+'</th>';
     else if(c.type==='tag') h+='<th class="l" style="width:'+(c.w||72)+'px">'+c.t+'</th>';
-    else if(c.type==='toggle') h+='<th style="width:48px"></th>';
     else if(c.k==='sc')  h+='<th class="l" style="width:112px">'+c.t+'</th>';
-    else h+='<th'+(c.tip?' title="'+c.tip+'"':'')+'>'+c.t+'</th>';
+    else h+='<th class="sortable'+sk(c.k)+'" data-ln="'+n+'" data-lsort="'+c.k+'"'+(c.tip?' title="'+lstEsc(c.tip)+'"':'')+'>'+c.t+ar(c.k)+'</th>';
   });
-  h+='</tr></thead><tbody>';
-
-  groups.forEach(function(g,idx){
-    const m=g.m;
-    const ctx={i:i, rank:idx+1, name:String(g.k), all:all};
-    h+='<tr data-lst="'+String(g.k).replace(/"/g,'&quot;').replace(/</g,'&lt;')+'" class="lst-row">';
-    cols.forEach(function(c){ h+=dimCell(c,m,ctx); });
-    /* SKU 展开图标 */
-    h+='<td class="lst-tog" data-toggle="'+String(g.k).replace(/"/g,'&quot;')+'" title="展开/收起 SKU 明细">'+
-      '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+
-      '<polyline points="4 6,8 10,12 6"/></svg></td>';
-    h+='</tr>';
-  });
-  h+='</tbody><tfoot><tr>';
-  const sumCtx={i:i, rank:'', name:'合计（在售SKU口径，n='+nf(all.n)+'）', all:all};
-  allCols.forEach(function(c){
-    if(c.k==='_rk') h+='<td class="l"></td>';
-    else if(c.k==='_name') h+='<td class="l">'+sumCtx.name+'</td>';
-    else if(c.k==='sc'||c.k==='c3x'||c.k==='ownx'||c.k==='_toggle') h+='<td class="l"></td>';
-    else h+=dimCell(c,all,sumCtx);
-  });
-  h+='</tr></tfoot></table></div>';
-  host.innerHTML=h;
-
-  /* 绑定展开/收起事件 */
-  host.querySelectorAll('td.lst-tog').forEach(function(td){
-    td.onclick=function(e){
-      e.stopPropagation();
-      const lstKey=td.dataset.toggle;
-      const grp=groups.find(function(g){ return String(g.k)===lstKey; });
-      if(!grp) return;
-      /* 如果已有展开行，先移除 */
-      const existing=host.querySelector('tr.lst-expand[data-expand="'+String(lstKey).replace(/"/g,'\"')+'"]');
-      if(existing){
-        existing.remove();
-        td.querySelector('svg').innerHTML='<polyline points="4 6,8 10,12 6"/>';
+  h+='</tr>';
+  if(st.fs){
+    h+='<tr class="filrow">'+cols.map(function(c){
+      if(c.k==='_rk')    return '<td class="fc">'+((fKeys.length||txCnt)?'<span class="fclear" data-lfclear="'+n+'" title="清除本板块所有筛选条件">✕</span>':'')+'</td>';
+      if(c.k==='_name')  return '<td class="l">'+lstTxBtn(n,'__g',st,gNames,'组名')+'</td>';
+      if(c.type==='txt') return '<td>'+lstTxBtn(n,c.k,st,(exVals[c.k]||[]),c.t)+'</td>';
+      if(c.type==='tag') return '<td>'+dimTagSel(n,c.k,st)+'</td>';
+      if(c.k==='sc')     return '<td>'+lstTxBtn(n,'sc',st,Object.keys(all.sc||{}),'场景构成')+'</td>';
+      var hint=(DIMF_HINT[c.k]||[])[0]||(c.type==='pct'?'8~13':(c.type==='int'?'>100':'30~70'));
+      return '<td>'+dimFilNum(n,c.k,st,hint)+'</td>';
+    }).join('')+'</tr>';
+  }
+  h+='</thead><tbody>';
+  shown.forEach(function(g,idx){
+    const m=g.m, key=String(g.k);
+    const ctx={i:3, rank:idx+1, name:key, all:all};
+    const open=!!LST_OPEN[n][key];
+    h+='<tr class="lst-row">';
+    cols.forEach(function(c){
+      if(c.k==='_name'){
+        h+='<td class="l nm"><span class="lnm" title="'+lstEsc(key)+'">'+lstEsc(key)+'</span>'+
+           '<button class="lstexp'+(open?' on':'')+'" data-lexp="'+n+':'+lstEsc(key)+'" title="'+(open?'收起':'展开')+'该 Listing 下的 SKU 明细">'+(open?LST_CHEV_UP:LST_CHEV)+'</button></td>';
         return;
       }
-      /* 展开：紧随该行插入 SKU 明细行 */
-      const parentRow=td.closest('tr.lst-row');
-      const expandRow=document.createElement('tr');
-      expandRow.className='lst-expand';
-      expandRow.dataset.expand=String(lstKey).replace(/"/g,'&quot;');
-      const expandTd=document.createElement('td');
-      expandTd.colSpan=allCols.length;
-      expandTd.innerHTML=renderLstSkuSub(grp.rows);
-      expandRow.appendChild(expandTd);
-      parentRow.insertAdjacentElement('afterend',expandRow);
-      td.querySelector('svg').innerHTML='<polyline points="6 4,10 8,6 12"/>';
+      h+=dimCell(c,m,ctx);
+    });
+    h+='</tr>';
+    if(open){
+      h+='<tr class="lst-exp-row"><td colspan="'+cols.length+'">'+lstSkuTable(g.rows)+'</td></tr>';
+    }
+  });
+  if(!shown.length) h+='<tr><td colspan="'+cols.length+'" style="padding:22px;text-align:center;color:var(--muted)">没有符合筛选条件的 Listing —— 点上方「清除筛选」恢复，或修改条件</td></tr>';
+  h+='</tbody><tfoot><tr>'+cols.map(function(c){
+    if(c.k==='_rk') return '<td class="l"></td>';
+    if(c.k==='_name') return '<td class="l">合计 / 加权'+(fKeys.length?'（已筛选）':'')+'</td>';
+    if(c.k==='sc'||c.k==='c3x'||c.k==='ownx') return '<td class="l"></td>';
+    return dimCell(c,all,{i:3, rank:'', name:'合计', all:all});
+  }).join('')+'</tr></tfoot></table></div>';
+  h+='</div>';
+  host.innerHTML=h;
+
+  bindLst(host,S);
+  if(_sy) window.scrollTo(0,_sy);
+}
+
+/* Listing 下的 SKU 明细子表：全字段（SKU_COLS 全 27 列），可横向滚动 */
+function lstSkuTable(rows){
+  const cols=SKU_COLS;
+  let t='<div class="lst-sub-wrap"><div class="lst-sub-hd"><b>'+nf(rows.length)+'</b> 个 SKU 明细（点击行看 SKU 详情）</div>'+
+        '<div class="tbl-wrap"><table class="dt lst-sub"><thead><tr>';
+  cols.forEach(function(c){ t+='<th class="'+(c[2]==='l'?'l':(c[2]==='t'?'tagc':''))+'">'+c[1]+'</th>'; });
+  t+='</tr></thead><tbody>';
+  rows.slice().sort(function(a,b){ return b.q4-a.q4; }).forEach(function(r){
+    t+='<tr data-sku="'+lstEsc(r.sku)+'">'+cols.map(function(c){ return skuCell(r,c); }).join('')+'</tr>';
+  });
+  t+='</tbody></table></div></div>';
+  return t;
+}
+
+/* 事件绑定 */
+function bindLst(host,S){
+  const n=S.n, st=LST_ST[n];
+  host.querySelectorAll('button.lstexp').forEach(function(b){
+    b.onclick=function(e){
+      e.stopPropagation();
+      const key=b.dataset.lexp.slice(String(n).length+1);
+      if(LST_OPEN[n][key]) delete LST_OPEN[n][key]; else LST_OPEN[n][key]=1;
+      renderLstBlock(S);
     };
   });
-}
-
-/* Listing 下 SKU 明细子表 */
-function renderLstSkuSub(rows){
-  const cols=skuCols();
-  let h='<table class="dt sub-sku"><thead><tr>';
-  cols.forEach(function(c){
-    if(c[3]==='dim') h+='<th class="l">'+c[1]+'</th>';
-    else h+='<th>'+c[1]+'</th>';
+  host.querySelectorAll('tbody tr[data-sku]').forEach(function(tr){
+    tr.style.cursor='pointer';
+    tr.onclick=function(e){ e.stopPropagation(); openSku(tr.dataset.sku); };
   });
-  h+='</tr></thead><tbody>';
-  rows.sort(function(a,b){ return b.q4 - a.q4; });
-  rows.forEach(function(r){
-    h+='<tr>'+cols.map(function(c){ return skuCell(r,c); }).join('')+'</tr>';
+  host.querySelectorAll('th.sortable[data-lsort]').forEach(function(th){
+    th.onclick=function(){
+      const k=th.dataset.lsort;
+      if(st.sort===k) st.dir=(st.dir===1?-1:1); else { st.sort=k; st.dir=-1; }
+      renderLstBlock(S);
+    };
   });
-  h+='</tbody></table>';
-  return h;
+  const fb=host.querySelector('[data-lfbtn]');
+  if(fb) fb.onclick=function(){ st.fs=!st.fs; renderLstBlock(S); };
+  const fcl=host.querySelector('[data-lfclear]');
+  if(fcl) fcl.onclick=function(){ st.f={}; st.tx={}; renderLstBlock(S); };
+  host.querySelectorAll('[data-lcgseg]').forEach(function(seg){
+    seg.querySelectorAll('[data-lcgv]').forEach(function(b){
+      b.onclick=function(e){
+        e.stopPropagation();
+        const v=b.dataset.lcgv;
+        if(COL_SEL['lst'+n]){ delete COL_SEL['lst'+n]; colxSave(); }
+        if(v==='all'){ st.cg='all'; }
+        else{
+          let cur=(st.cg==='all')?[]:st.cg.split('+');
+          if(cur.indexOf(v)>=0) cur=cur.filter(function(x){ return x!==v; }); else cur.push(v);
+          st.cg=cur.length?cur.join('+'):'all';
+        }
+        renderLstBlock(S);
+      };
+    });
+  });
+  /* 数值过滤：符号下拉 */
+  host.querySelectorAll('select.fop[data-l]').forEach(function(sel){
+    sel.onchange=function(){
+      const k=sel.dataset.k;
+      const box=sel.closest('.fnum'), inp=box&&box.querySelector('input.fin');
+      const val=inp?inp.value:'';
+      const expr=sel.value?(sel.value+val):val;
+      if(expr.trim()) st.f[k]=expr; else delete st.f[k];
+      renderLstBlock(S);
+    };
+  });
+  /* 数值过滤：输入框 */
+  host.querySelectorAll('input.fin[data-l]').forEach(function(inp){
+    inp.oninput=function(){
+      const k=inp.dataset.k;
+      const box=inp.closest('.fnum'), opSel=box&&box.querySelector('select.fop');
+      const op=opSel?opSel.value:'';
+      st.f[k]=op?(op+inp.value):inp.value;
+      const caret=inp.selectionStart;
+      clearTimeout(fTimer);
+      fTimer=setTimeout(function(){
+        renderLstBlock(S);
+        const again=document.querySelector('#lst'+n+' input.fin[data-k="'+k+'"]');
+        if(again){ again.focus(); try{ again.setSelectionRange(caret,caret); }catch(e){} }
+      },320);
+    };
+    inp.onkeydown=function(e){ if(e.key==='Enter'){ e.preventDefault(); e.target.blur(); } };
+  });
+  /* 打标过滤：下拉 */
+  host.querySelectorAll('select.fin[data-l]').forEach(function(sel){
+    sel.onchange=function(){
+      const k=sel.dataset.k;
+      if(sel.value) st.f[k]=sel.value; else delete st.f[k];
+      renderLstBlock(S);
+    };
+  });
+  /* 导出 */
+  const eb=host.querySelector('[data-lexpgo]');
+  if(eb) eb.onclick=function(){
+    const sel=host.querySelector('[data-lexpsel="'+n+'"]');
+    const mode=sel?sel.value:'sum';
+    const cur=(renderLstBlock._shown&&renderLstBlock._shown[n])||[];
+    const rows=cur.reduce(function(a,g){ return a.concat(g.rows); },[]);
+    if(mode==='sku') exportSkuView(rows, S.short);
+    else exportLstSum(S, cur, M(agg(rows)));
+  };
 }
 
-function renderLowLst(){
-  const grps=onSaleListings();
-  const low=grps.filter(lowLstFilter);
-  renderLstBlock(low,'lowHost','s5lowScope');
-}
-
-function renderHiLst(){
-  const grps=onSaleListings();
-  const hi=grps.filter(hiLstFilter);
-  renderLstBlock(hi,'hiHost','s5hiScope');
+/* 05/06 汇总导出：列取 lstColsOf（跟随列分组 / 自定义列），取值与页面同一套 dimTxtVal */
+function exportLstSum(S, groups, all){
+  const cols=lstColsOf(S.n);
+  const totQ=all.q||1;
+  const lines=[cols.map(function(c){ return csvCell(c.k==='_name'?'国家Listing':c.t); }).join(',')];
+  groups.forEach(function(g,idx){
+    lines.push(cols.map(function(c){ return csvCell(dimTxtVal(c,g,idx+1,totQ)); }).join(','));
+  });
+  lines.push(cols.map(function(c){
+    if(c.k==='_rk')   return csvCell('');
+    if(c.k==='_name') return csvCell('合计 / 加权');
+    if(c.k==='sc'||c.k==='c3x'||c.k==='ownx') return csvCell('');
+    return csvCell(dimTxtVal(c,{k:'合计',m:all},groups.length+1,totQ));
+  }).join(','));
+  downloadCsv(lines, '巴西运营监控看板_'+S.short+'汇总_'+new Date().toISOString().slice(0,10)+'.csv');
 }
 
 function cmpBar(sc,tot){
@@ -4695,7 +4882,8 @@ const CG_NAME={dim:'维度',scale:'规模与订单',rate:'达成率',profit:'利
 const COLX={scope:null, draft:null, cols:[], btn:null};
 function colxMeta(scope){
   if(scope==='scn'||scope==='sd') return SCN_COLS.map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
-  if(scope==='sku'||scope==='skm') return SKU_COLS.map(function(c){ return {k:c[0],t:c[1],g:c[3]||'dim'}; });
+  if(scope==='sku'||scope==='skm') return SKU_COLS.map(function(c){ return {c:c[0],t:c[1],g:c[3]||'dim'}; }).map(function(c){ return {k:c.c,t:c.t,g:c.g}; });
+  if(String(scope).indexOf('lst')===0) return lstAllCols().map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
   const i=+String(scope).slice(3);
   const ex=DIM_EXTRA[i]||[];
   const all = ex.length ? [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2)) : DIM_ALLCOLS;
@@ -4761,6 +4949,7 @@ function renderColPanel(q){
         if(sc==='scn') SCNCG.g='all';
         else if(sc==='sd') SD.cg='all';
         else if(sc==='sku') SKUCG.g='all';
+        else if(String(sc).indexOf('lst')===0){ const nn=+String(sc).slice(3); if(LST_ST[nn]) LST_ST[nn].cg='all'; }
         else if(sc!=='skm') DIMCG[+String(sc).slice(3)]='all';
         colxSave(); repaintAll(); return;
       }
@@ -5264,6 +5453,21 @@ document.addEventListener('click',function(e){
     const p=tb.dataset.tx.split(':');
     let vals=[]; try{ vals=JSON.parse(tb.dataset.vals||'[]'); }catch(err){}
     openTxPanel(+p[0], p[1], vals, tb); return;
+  }
+  /* 05/06 文本多选（scope 落在 LST_ST[n].tx） */
+  const lt=e.target.closest && e.target.closest('[data-ltx]');
+  if(lt){
+    e.preventDefault(); e.stopPropagation();
+    const p2=lt.dataset.ltx.split(':');
+    const n=+p2[0], k=p2[1];
+    let vals=[]; try{ vals=JSON.parse(lt.dataset.vals||'[]'); }catch(err){}
+    const S=LST_SECTIONS.filter(function(x){ return x.n===n; })[0];
+    openTxPanel(n, k, vals, lt, {
+      get:function(kk){ return (LST_ST[n].tx||{})[kk]||[]; },
+      set:function(kk,arr){ LST_ST[n].tx=LST_ST[n].tx||{}; if(arr&&arr.length) LST_ST[n].tx[kk]=arr; else delete LST_ST[n].tx[kk]; },
+      after:function(){ if(S) renderLstBlock(S); }
+    });
+    return;
   }
   /* 弹窗里的文本多选（scope 落在 SKM.tx） */
   const tk=e.target.closest && e.target.closest('[data-txk]');
@@ -5790,7 +5994,7 @@ function syncHeadH(){
 }
 function renderAll(){
   AF=[];
-  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims(); renderLowLst(); renderHiLst();
+  renderFilters(); renderDrill(); renderOverview(); renderAno(); renderScene(); renderSceneDim(); renderDims(); renderLstSections();
   try{ syncHeadH(); }catch(e){}   /* 下钻条出现/消失会改变吸顶区高度 */
 }
 let kwTimer=null;
