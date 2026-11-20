@@ -2311,15 +2311,14 @@ function setNavView(id){
   }
   const target=navTopSection(id), same=ACTIVE_NAV===id;
   if(same){
-    /* 再次点击已激活的项 → 收拢板块内容，只留标题 */
+    /* 再次点击已激活的项 → 展开/收拢来回切换（只留标题 ↔ 细节数据） */
     ACTIVE_NAV=id;
     const sec=target==='secFoot'?document.getElementById('secFoot'):document.querySelector('.main > .block#'+target);
     if(target==='secFoot'){
-      FOOT_OPEN=false; renderFoot();
+      FOOT_OPEN=!FOOT_OPEN; renderFoot();
       if(sec) scrollToEl(sec,16);
     }else if(sec){
-      /* 如果还没收拢则收拢；如果已收拢则保持（不切换） */
-      if(!sec.classList.contains('collapsed')) toggleBlock(sec);
+      toggleBlock(sec);
       scrollToEl(sec,16);
     }
     return;
