@@ -2298,7 +2298,11 @@ function navTopSection(id){
 function setNavView(id){
   if(id==='__all__'){
     ACTIVE_NAV=null;
-    document.querySelectorAll('.main > .block, .main > footer').forEach(function(sec){ sec.hidden=false; });
+    document.querySelectorAll('.main > .block, .main > footer').forEach(function(sec){
+      sec.hidden=false;
+      /* 恢复全部 = 回到默认全展开；否则被目录收拢的板块会一直只剩标题 */
+      if(sec.classList.contains('block') && sec.classList.contains('collapsed')) toggleBlock(sec);
+    });
     document.querySelectorAll('#sidenav .navi[data-nav-id]').forEach(function(a){ a.classList.remove('on'); a.setAttribute('aria-current','false'); });
     const reset=document.getElementById('navShowAll');
     if(reset) reset.hidden=true;
@@ -2312,28 +2316,29 @@ function setNavView(id){
     const sec=target==='secFoot'?document.getElementById('secFoot'):document.querySelector('.main > .block#'+target);
     if(target==='secFoot'){
       FOOT_OPEN=false; renderFoot();
-      if(sec) sec.scrollIntoView({block:'start'});
+      if(sec) scrollToEl(sec,16);
     }else if(sec){
       /* 如果还没收拢则收拢；如果已收拢则保持（不切换） */
       if(!sec.classList.contains('collapsed')) toggleBlock(sec);
-      sec.scrollIntoView({block:'start'});
+      scrollToEl(sec,16);
     }
     return;
   }
   /* 切换到新板块 */
   ACTIVE_NAV=id;
+  let scrolled=false;
   document.querySelectorAll('.main > .block, .main > footer').forEach(function(sec){
     const active=sec.id===target;
     sec.hidden=!active;
     if(active && target==='sec5' && id.indexOf('dim')===0){
       const index=+id.slice(3), sub=sec.querySelector('#dim'+index);
-      if(sub) sub.scrollIntoView({block:'start'});
+      if(sub){ scrollToEl(sub,18); scrolled=true; }
     }else if(active){
       /* 自动展开收拢的板块 */
       if(sec.classList.contains('collapsed')) toggleBlock(sec);
       /* 自动展开收拢的页脚 */
       if(target==='secFoot' && !FOOT_OPEN){ FOOT_OPEN=true; renderFoot(); }
-      sec.scrollIntoView({block:'start'});
+      scrollToEl(sec,16); scrolled=true;
     }
   });
   document.querySelectorAll('#sidenav .navi[data-nav-id]').forEach(function(a){
@@ -2342,7 +2347,8 @@ function setNavView(id){
   });
   const reset=document.getElementById('navShowAll');
   if(reset) reset.hidden=false;
-  window.scrollTo({top:0,behavior:'smooth'});
+  /* 兜底：目标板块没找到时才回顶部（不要无条件 scrollTo(0)，会把子层落点冲掉） */
+  if(!scrolled) window.scrollTo({top:0,behavior:'smooth'});
 }
 let NAV_MINI=false;
 try{ NAV_MINI = localStorage.getItem('bpNavMini')==='1'; }catch(e){}
