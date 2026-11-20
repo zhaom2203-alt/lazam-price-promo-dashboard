@@ -1602,8 +1602,25 @@ section.block{scroll-margin-top:16px}
 .main > [hidden]{display:none!important}
 #sidenav .navi.on{background:#edf3ff;color:var(--accent);font-weight:700}
 #sidenav .navi[aria-current="page"]::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:3px;background:var(--accent)}
-#sidenav .nav-all{border:0;width:calc(100% - 16px);text-align:left;font:inherit;cursor:pointer}
-#sidenav .nav-all[hidden]{display:none}
+/* 单板块视图出口：目录顶部一条轻量「返回」，随目录滚动吸顶；收起目录时只剩箭头 */
+#sidenav .navback{
+  display:flex;align-items:center;gap:7px;flex:none;
+  width:100%;margin:0 0 8px;padding:7px 10px;
+  border:1px solid #dbe6f8;border-radius:9px;background:#fff;
+  color:var(--accent);font-family:inherit;font-size:12.5px;font-weight:700;line-height:1.2;
+  cursor:pointer;text-align:left;position:sticky;top:0;z-index:3;
+  transition:background .15s,border-color .15s}
+#sidenav .navback:hover{background:#f2f7ff;border-color:#c6d8f4}
+#sidenav .navback:focus-visible{outline:2px solid #b9cdf0;outline-offset:1px}
+#sidenav .navback svg{width:14px;height:14px;flex:none}
+#sidenav .navback .nbi{display:flex;align-items:center;justify-content:center;width:14px;height:14px;flex:none}
+#sidenav .navback .nbi svg{display:block}
+#sidenav .navback .nsh{display:none}
+#sidenav .navback[hidden]{display:none}
+#sidenav.mini .navback{justify-content:center;gap:0;padding:8px 0}
+#sidenav.mini .navback .nt{display:none}
+#sidenav.mini .navback .nbi{display:none}
+#sidenav.mini .navback .nsh{display:inline;font-size:12px;font-weight:800;letter-spacing:0}
 
 /* 与 04 各层视觉一致：同一套 .subblock / .dt，不额外造样式 */
 #secLow,#secHi{scroll-margin-top:16px}
@@ -2304,7 +2321,7 @@ function setNavView(id){
       if(sec.classList.contains('block') && sec.classList.contains('collapsed')) toggleBlock(sec);
     });
     document.querySelectorAll('#sidenav .navi[data-nav-id]').forEach(function(a){ a.classList.remove('on'); a.setAttribute('aria-current','false'); });
-    const reset=document.getElementById('navShowAll');
+    const reset=document.getElementById('navBack');
     if(reset) reset.hidden=true;
     window.scrollTo({top:0,behavior:'smooth'});
     return;
@@ -2344,7 +2361,7 @@ function setNavView(id){
     a.classList.toggle('on',a.dataset.navId===id);
     a.setAttribute('aria-current',a.dataset.navId===id?'page':'false');
   });
-  const reset=document.getElementById('navShowAll');
+  const reset=document.getElementById('navBack');
   if(reset) reset.hidden=false;
   /* 兜底：目标板块没找到时才回顶部（不要无条件 scrollTo(0)，会把子层落点冲掉） */
   if(!scrolled) window.scrollTo({top:0,behavior:'smooth'});
@@ -2376,6 +2393,15 @@ function renderNav(){
       '<button class="navtog" type="button" aria-controls="sidenav"></button>'+
     '</div>';
   n.querySelector('.navtog').onclick=e=>{e.preventDefault();toggleNav();};
+  /* 单板块视图的出口：贴在目录顶部（随目录滚动吸顶），比沉底大按钮更容易发现 */
+  const back=el('button','navback',
+    '<i class="nbi">'+NIC.grid+'</i>'+
+    '<span class="nt">查看全部板块</span><span class="nsh">全</span>');
+  back.type='button'; back.id='navBack'; back.hidden=!ACTIVE_NAV;
+  back.title='退出单板块视图，显示全部板块（Esc）';
+  back.setAttribute('aria-label','查看全部板块');
+  back.onclick=function(){ setNavView('__all__'); };
+  n.appendChild(back);
   NAV.forEach(it=>{
     const a=el('a','navi'+(it.sub?' sub':''),
       (it.ic?'<i class="nic">'+NIC[it.ic]+'</i>':'')+
@@ -2388,14 +2414,16 @@ function renderNav(){
     a.onclick=e=>{e.preventDefault(); setNavView(it.id);};
     n.appendChild(a);
   });
-  const all=el('button','navi nav-all','<span class="nt">显示全部板块</span><span class="nsh">全部</span>');
-  all.type='button'; all.id='navShowAll'; all.hidden=!ACTIVE_NAV;
-  all.onclick=function(){ setNavView('__all__'); };
-  n.appendChild(all);
   const up=el('a','navi up','<span class="nt">回到顶部</span><span class="nsh">↑</span>');
   up.href='#'; up.title='回到顶部';
   up.onclick=e=>{e.preventDefault();setNavView('__all__');window.scrollTo({top:0,behavior:'smooth'});};
   n.appendChild(up);
+  if(!renderNav._esc){
+    renderNav._esc=true;
+    document.addEventListener('keydown',function(e){
+      if(e.key==='Escape' && ACTIVE_NAV){ setNavView('__all__'); }
+    });
+  }
   applyNavMode();
 }
 
