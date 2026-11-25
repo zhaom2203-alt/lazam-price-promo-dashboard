@@ -4545,13 +4545,13 @@ function lstTxBtn(n,k,st,vals,label){
     (cur.length? cur.length+' 项':'全部')+' <i>▾</i></button>';
 }
 /* 05/06 的列定义 = 04 国家Listing 层（含 三级分类 / 销售负责人 + 场景构成）
-   v95：在「SKU数」之后插入「淘汰数」列（本 Listing 名下被剔除的淘汰 SKU 个数，可点开明细） */
+   v95：在「SKU数」之后插入「已剔除SKU个数」列（本 Listing 名下被剔除的淘汰 SKU 个数，可点开明细） */
 function lstAllCols(){
   const base=[DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(DIM_EXTRA[3]||[], DIM_ALLCOLS.slice(2));
   const out=[];
   base.forEach(function(c){
     out.push(c);
-    if(c.k==='n') out.push({k:'en', t:'淘汰数', type:'int', g:'scale',
+    if(c.k==='n') out.push({k:'en', t:'已剔除SKU个数', type:'int', g:'scale',
       tip:'该 Listing 下「SKU状态=淘汰」已被剔除的 SKU 个数；不计入 SKU数 与任何指标，点击数字看明细'});
   });
   return out;
