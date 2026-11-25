@@ -1625,6 +1625,15 @@ section.block{scroll-margin-top:16px}
 /* 与 04 各层视觉一致：同一套 .subblock / .dt，不额外造样式 */
 #secLow,#secHi{scroll-margin-top:16px}
 .lst-sec .subblock-head h3{font-size:13px}
+/* v93：已剔除淘汰 SKU 个数（可点，弹窗看明细） */
+button.lelim{
+  font-family:inherit;font-size:11.8px;line-height:1.5;cursor:pointer;
+  background:#fff8ec;border:1px solid #f0dcc0;color:#9a6a1e;
+  border-radius:6px;padding:2px 8px;transition:.14s;
+}
+button.lelim b{font-weight:800;margin:0 1px}
+button.lelim:hover{background:#fdf0da;border-color:#e6c99a;color:#7f5512}
+button.lelim:active{transform:translateY(.5px)}
 /* Listing 名 + 展开图标：名字左、箭头贴名字右侧，不撑破列宽 */
 .lst-row .nm{white-space:nowrap;max-width:220px}
 .lst-row .nm .lnm{vertical-align:middle}
@@ -4541,6 +4550,11 @@ function lstOnSaleRows(){
   return baseRows().filter(function(r){ return r.elim===0; });
 }
 function lstAllGroups(){ return groupBy(lstOnSaleRows(),'lst'); }
+/* 本板块这些 Listing 下因「淘汰」被剔除的 SKU（v94：板块头显示个数，点开弹窗看明细） */
+function lstElimRows(groups){
+  const keep=new Set(groups.map(function(g){ return String(g.k); }));
+  return baseRows().filter(function(r){ return r.elim!==0 && keep.has(String(r.lst)); });
+}
 
 /* ---- 渲染入口 ---- */
 function renderLstSections(){ LST_SECTIONS.forEach(function(S){ renderLstBlock(S); }); }
@@ -4557,6 +4571,9 @@ function renderLstBlock(S){
   if(chip) chip.textContent=nf(groups.length)+' 个 Listing';
 
   const sumRows=groups.reduce(function(a,g){ return a.concat(g.rows); },[]);
+  const elimRows=lstElimRows(groups);
+  renderLstBlock._elim=renderLstBlock._elim||{};
+  renderLstBlock._elim[n]=elimRows;
   const all=M(agg(sumRows));
   const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k]&&String(st.f[k]).trim(); });
   const txCnt=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; }).length;
@@ -4573,6 +4590,7 @@ function renderLstBlock(S){
   h+='<div class="subblock-head">'+
      '<h3><span class="sn">'+n+'</span>'+S.name+'</h3>'+
      '<span class="cnt">'+nf(groups.length)+' 项 · '+nf(sumRows.length)+' SKU</span>'+
+     (elimRows.length?'<button class="lelim" data-lelim="'+n+'" title="这 '+groups.length+' 个 Listing 下因 SKU 状态为「淘汰」而剔除的 SKU，点击查看明细（含全字段）">已剔除淘汰 <b>'+nf(elimRows.length)+'</b> 个</button>':'')+
      '<button class="fbtn'+(st.fs?' on':'')+((fKeys.length+txCnt)?' has':'')+'" data-lfbtn="'+n+'" title="展开列筛选：数值列选符号 + 填数值；文本列点「全部 ▾」多选；打标列选档位">筛选'+((fKeys.length+txCnt)?' '+(fKeys.length+txCnt):'')+'</button>'+
      '<span class="cgseg" data-lcgseg="'+n+'" title="按用途只显示相关列；导出跟随当前选择">'+['all','scale','rate','profit','inv'].map(function(g){
         const on=(g==='all')?(st.cg==='all'):(st.cg!=='all'&&st.cg.split('+').indexOf(g)>=0);
@@ -4714,6 +4732,13 @@ function bindLst(host,S){
   });
   const fb=host.querySelector('[data-lfbtn]');
   if(fb) fb.onclick=function(){ st.fs=!st.fs; renderLstBlock(S); };
+  /* 已剔除淘汰 SKU：点个数开弹窗看明细 */
+  const elb=host.querySelector('[data-lelim]');
+  if(elb) elb.onclick=function(e){
+    e.stopPropagation();
+    const rows=(renderLstBlock._elim&&renderLstBlock._elim[n])||[];
+    openSkuList(S.name+' · 已剔除淘汰 SKU '+nf(rows.length)+' 个', rows);
+  };
   const fcl=host.querySelector('[data-lfclear]');
   if(fcl) fcl.onclick=function(){ st.f={}; st.tx={}; renderLstBlock(S); };
   host.querySelectorAll('[data-lcgseg]').forEach(function(seg){
