@@ -1634,6 +1634,15 @@ button.lelim{
 button.lelim b{font-weight:800;margin:0 1px}
 button.lelim:hover{background:#fdf0da;border-color:#e6c99a;color:#7f5512}
 button.lelim:active{transform:translateY(.5px)}
+/* v95：表格行内「淘汰数」（紧跟 SKU数），点数字看该 Listing 的淘汰 SKU 明细 */
+td.en0{color:var(--muted)}
+button.enum{
+  font-family:inherit;font-size:11.8px;font-weight:800;line-height:1.45;cursor:pointer;
+  background:#fff8ec;border:1px solid #f0dcc0;color:#9a6a1e;border-radius:6px;
+  padding:1px 7px;transition:.14s;
+}
+button.enum:hover{background:#fdf0da;border-color:#e6c99a;color:#7f5512}
+button.enum:active{transform:translateY(.5px)}
 /* Listing 名 + 展开图标：名字左、箭头贴名字右侧，不撑破列宽 */
 .lst-row .nm{white-space:nowrap;max-width:220px}
 .lst-row .nm .lnm{vertical-align:middle}
@@ -4535,9 +4544,17 @@ function lstTxBtn(n,k,st,vals,label){
     ' data-vals="'+String(vj).replace(/"/g,'&quot;')+'" title="'+(label||'')+' 筛选">'+
     (cur.length? cur.length+' 项':'全部')+' <i>▾</i></button>';
 }
-/* 05/06 的列定义 = 04 国家Listing 层（含 三级分类 / 销售负责人 + 场景构成） */
+/* 05/06 的列定义 = 04 国家Listing 层（含 三级分类 / 销售负责人 + 场景构成）
+   v95：在「SKU数」之后插入「淘汰数」列（本 Listing 名下被剔除的淘汰 SKU 个数，可点开明细） */
 function lstAllCols(){
-  return [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(DIM_EXTRA[3]||[], DIM_ALLCOLS.slice(2));
+  const base=[DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(DIM_EXTRA[3]||[], DIM_ALLCOLS.slice(2));
+  const out=[];
+  base.forEach(function(c){
+    out.push(c);
+    if(c.k==='n') out.push({k:'en', t:'淘汰数', type:'int', g:'scale',
+      tip:'该 Listing 下「SKU状态=淘汰」已被剔除的 SKU 个数；不计入 SKU数 与任何指标，点击数字看明细'});
+  });
+  return out;
 }
 function lstColsOf(n){
   const all=lstAllCols();
@@ -4549,11 +4566,27 @@ function lstColsOf(n){
 function lstOnSaleRows(){
   return baseRows().filter(function(r){ return r.elim===0; });
 }
-function lstAllGroups(){ return groupBy(lstOnSaleRows(),'lst'); }
+/* v95：groupBy 之后统一挂上 _en（本 Listing 的淘汰 SKU 个数），
+   渲染 / 筛选 / 排序 / 导出全部读这一个字段，避免各处自己再算一遍 */
+function lstAllGroups(){
+  const gs=groupBy(lstOnSaleRows(),'lst');
+  const em=lstElimByLst();
+  gs.forEach(function(g){ g.m._en=(em[String(g.k)]||[]).length; });
+  lstAllGroups._emap=em;
+  return gs;
+}
 /* 本板块这些 Listing 下因「淘汰」被剔除的 SKU（v94：板块头显示个数，点开弹窗看明细） */
 function lstElimRows(groups){
   const keep=new Set(groups.map(function(g){ return String(g.k); }));
   return baseRows().filter(function(r){ return r.elim!==0 && keep.has(String(r.lst)); });
+}
+/* 按 Listing 归组的淘汰 SKU 行（v95：表格行内「淘汰数」列，点数字看该 Listing 的明细） */
+function lstElimByLst(){
+  const m={};
+  baseRows().forEach(function(r){
+    if(r.elim!==0){ const k=String(r.lst); (m[k]=m[k]||[]).push(r); }
+  });
+  return m;
 }
 
 /* ---- 渲染入口 ---- */
@@ -4572,9 +4605,14 @@ function renderLstBlock(S){
 
   const sumRows=groups.reduce(function(a,g){ return a.concat(g.rows); },[]);
   const elimRows=lstElimRows(groups);
+  const elimMap=lstAllGroups._emap||lstElimByLst();
   renderLstBlock._elim=renderLstBlock._elim||{};
   renderLstBlock._elim[n]=elimRows;
+  renderLstBlock._emap=renderLstBlock._emap||{};
+  renderLstBlock._emap[n]=elimMap;
   const all=M(agg(sumRows));
+  /* _en 已在 lstAllGroups() 里挂好；合计行单独挂，点它等价于板块头那个汇总入口 */
+  all._en=elimRows.length;
   const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k]&&String(st.f[k]).trim(); });
   const txCnt=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; }).length;
   const gNames=groups.map(function(g){ return String(g.k); });
@@ -4610,7 +4648,7 @@ function renderLstBlock(S){
   const exCols=DIM_EXTRA[3]||[];
   const exVals={c3x:Object.keys(all.c3c||{}), ownx:Object.keys(all.ownc||{})};
   const sortKey=st.sort||'q', dir=st.dir===1?1:-1;
-  const getter={q:g=>g.m.q,qp:g=>g.m.q,f:g=>g.m.f||0,rate:g=>g.m.rate,n:g=>g.m.n,pr:g=>g.m.pr,
+  const getter={q:g=>g.m.q,qp:g=>g.m.q,f:g=>g.m.f||0,rate:g=>g.m.rate,n:g=>g.m.n,en:g=>g.m._en||0,pr:g=>g.m.pr,
     rateL1:g=>g.m.rateL1,wrateL1:g=>g.m.wrateL1,wrate4:g=>g.m.wrate4,
     days:g=>g.m.days,gap:g=>g.m.gapW,
     invP:g=>g.m.invP,invS:g=>g.m.invS,whp:g=>g.m.whp,adp:g=>g.m.adp,acos:g=>g.m.acos,
@@ -4664,7 +4702,7 @@ function renderLstBlock(S){
   h+='</thead><tbody>';
   shown.forEach(function(g,idx){
     const m=g.m, key=String(g.k);
-    const ctx={i:3, rank:idx+1, name:key, all:all};
+    const ctx={i:3, rank:idx+1, name:key, all:all, lstN:n};
     const open=!!LST_OPEN[n][key];
     h+='<tr class="lst-row">';
     cols.forEach(function(c){
@@ -4685,7 +4723,7 @@ function renderLstBlock(S){
     if(c.k==='_rk') return '<td class="l"></td>';
     if(c.k==='_name') return '<td class="l">合计 / 加权'+(fKeys.length?'（已筛选）':'')+'</td>';
     if(c.k==='sc'||c.k==='c3x'||c.k==='ownx') return '<td class="l"></td>';
-    return dimCell(c,all,{i:3, rank:'', name:'合计', all:all});
+    return dimCell(c,all,{i:3, rank:'', name:'', all:all, lstN:n});
   }).join('')+'</tr></tfoot></table></div>';
   h+='</div>';
   host.innerHTML=h;
@@ -4739,6 +4777,18 @@ function bindLst(host,S){
     const rows=(renderLstBlock._elim&&renderLstBlock._elim[n])||[];
     openSkuList(S.name+' · 已剔除淘汰 SKU '+nf(rows.length)+' 个', rows);
   };
+  /* 行内「淘汰数」列：点某个 Listing 的数字，弹窗只看这个 Listing 名下的淘汰 SKU；
+     合计行的数字（data-en-k 为空）等价于板块头那个汇总入口 */
+  host.querySelectorAll('button.enum').forEach(function(b){
+    b.onclick=function(e){
+      e.stopPropagation();
+      const key=b.dataset.enK||'';
+      const map=(renderLstBlock._emap&&renderLstBlock._emap[n])||{};
+      const rows=key?(map[key]||[]):((renderLstBlock._elim&&renderLstBlock._elim[n])||[]);
+      if(!rows.length) return;
+      openSkuList(S.name+(key?' · '+key:'')+' · 已剔除淘汰 SKU '+nf(rows.length)+' 个', rows);
+    };
+  });
   const fcl=host.querySelector('[data-lfclear]');
   if(fcl) fcl.onclick=function(){ st.f={}; st.tx={}; renderLstBlock(S); };
   host.querySelectorAll('[data-lcgseg]').forEach(function(seg){
@@ -4895,6 +4945,15 @@ function dimCell(c, m, ctx){
       return '<td class="l" title="'+t.all.replace(/"/g,'&quot;')+'">'+t.txt+'</td>';
     }
     case 'n':     return '<td>'+nf(m.n)+'</td>';
+    /* v95：05/06 行内「淘汰数」，放在 SKU数 之后；点数字看该 Listing 的淘汰 SKU 明细 */
+    case 'en': {
+      const v=m._en||0;
+      if(!v) return '<td class="en0">0</td>';
+      const nm=String(ctx.name||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+      return '<td><button type="button" class="enum" data-en-n="'+String(ctx.lstN||'')+
+        '" data-en-k="'+nm+'" title="点击查看该 Listing 下被剔除的淘汰 SKU 明细（含全字段）">'+
+        nf(v)+'</button></td>';
+    }
     case 'q':     return '<td><b>'+nf(m.q)+'</b></td>';
     case 'qp':    return '<td>'+pct(ctx.all&&ctx.all.q?m.q/ctx.all.q:null)+'</td>';
     case 'f':     return '<td>'+nf(m.f,0)+'</td>';
@@ -4936,7 +4995,7 @@ const DIMF_TYPE={__g:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt', c3x:'t
 DIMCOLS.forEach(function(c){ DIMF_TYPE[c.k]=c.type; });
 /* 数值列的下拉候选（点输入框右侧箭头可展开，也可直接手输任意表达式） */
 const DIMF_HINT={
-  n:['>0','>5','>10'], q:['>0','>100','>1000'], qp:['>1','>5','>10'],
+  n:['>0','>5','>10'], en:['>0','>5','>10'], q:['>0','>100','>1000'], qp:['>1','>5','>10'],
   f:['>0','>100','>1000'],
   rate:['<80','80~90','90~110','>110'], rateL1:['<80','80~90','90~110','>110'],
   wrateL1:['<80','80~90','90~110','>110'], wrate4:['<80','80~90','90~110','>110'],
@@ -4948,6 +5007,7 @@ const DIMF_HINT={
 /* 取某组在某筛选列上的原值（打标列返回档位 key，严格匹配；其余返回显示值） */
 function dimFVal(g,k,totQ){
   if(k==='__g')  return String(g.k);
+  if(k==='en')   return g.m._en||0;
   if(k==='tagR') return tagR(g.m.rate).k;
   if(k==='tagP') return tagP(g.m.pr).k;
   if(k==='tagD') return tagD(g.m.days, g.m.invP).k;
@@ -5883,6 +5943,7 @@ function dimTxtVal(c,g,rank,totQ,totN){
     case '_rk':    return rank;
     case '_name':  return g.k;
     case 'n':      return m.n;
+    case 'en':     return m._en||0;
     case 'q':      return m.q;
     case 'qp':     return totQ?p1(m.q/totQ):'';
     case 'f':      return i0(m.f);
