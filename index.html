@@ -1623,7 +1623,7 @@ section.block{scroll-margin-top:16px}
 #sidenav.mini .navback .nsh{display:inline;font-size:12px;font-weight:800;letter-spacing:0}
 
 /* 与 04 各层视觉一致：同一套 .subblock / .dt，不额外造样式 */
-#secLow,#secHi{scroll-margin-top:16px}
+#secLowCat,#secLow,#secHi{scroll-margin-top:16px}
 .lst-sec .subblock-head h3{font-size:13px}
 /* v93：已剔除淘汰 SKU 个数（可点，弹窗看明细） */
 button.lelim{
@@ -1836,17 +1836,25 @@ tr.lst-exp-row>td{padding:0;background:#fafbfe;border-top:1px dashed var(--borde
         <div class="legend" id="dimLegend"></div>
       </section>
 
-      <!-- 05 -->
+      <!-- 05 重点低达 三级分类（v97：维度换到三级分类，行数少、先看品类） -->
+      <section class="block" id="secLowCat">
+        <div class="block-head">
+          <div class="btitle"><span class="bnum">05</span><h2>重点低达 三级分类</h2><span class="cnt" id="s5lowcatScope"></span></div>
+        </div>
+        <div id="lowcatHost"></div>
+      </section>
+
+      <!-- 06 -->
       <section class="block" id="secLow">
         <div class="block-head">
-          <div class="btitle"><span class="bnum">05</span><h2>重点低达 Listing</h2><span class="cnt" id="s5lowScope"></span></div>
+          <div class="btitle"><span class="bnum">06</span><h2>重点低达 Listing</h2><span class="cnt" id="s5lowScope"></span></div>
         </div>
         <div id="lowHost"></div>
       </section>
 
       <section class="block" id="secHi">
         <div class="block-head">
-          <div class="btitle"><span class="bnum">06</span><h2>重点超达 Listing</h2><span class="cnt" id="s5hiScope"></span></div>
+          <div class="btitle"><span class="bnum">07</span><h2>重点超达 Listing</h2><span class="cnt" id="s5hiScope"></span></div>
         </div>
         <div id="hiHost"></div>
       </section>
@@ -2320,8 +2328,9 @@ const NAV=[
   {id:'dim2', t:'三级分类', sub:1, sh:'分类'},
   {id:'dim3', t:'国家Listing', sub:1, sh:'LIST'},
   {id:'dim4', t:'SKU', sub:1, sh:'SKU'},
-  {id:'secLow', n:'05', t:'重点低达Listing', ic:'layers'},
-  {id:'secHi',  n:'06', t:'重点超达Listing', ic:'layers'},
+  {id:'secLowCat', n:'05', t:'重点低达三级分类', ic:'layers'},
+  {id:'secLow', n:'06', t:'重点低达Listing', ic:'layers'},
+  {id:'secHi',  n:'07', t:'重点超达Listing', ic:'layers'},
   {id:'secFoot', t:'口径与说明', ic:'info'}
 ];
 let ACTIVE_NAV=null;
@@ -4512,11 +4521,19 @@ function renderAno(){
    最新周·最新版达成 = Σ最新周订单 ÷ Σ最新版预测（M.rateL1）
    最新周·加权达成   = Σ最新周订单 ÷ Σ加权预测   （M.wrateL1）          */
 
+/* 05 重点低达 三级分类（v97）：与 05/06 同一套渲染器，只换分组维度与列集；
+   内部键 n 仍用 7，避免和旧版 lst5/lst6 的自定义列缓存串台 */
 var LST_SECTIONS=[
+  {n:7, id:'lowcatHost', scopeId:'s5lowcatScope', name:'重点低达 三级分类', short:'低达三级分类',
+   f:'c3', dimName:'三级分类', unit:' 个分类', en:false,
+   sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &lt;70% 且 最新周·加权达成 &lt;70%',
+   pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1<0.7 && m.wrateL1<0.7; }},
   {n:5, id:'lowHost', scopeId:'s5lowScope', name:'重点低达 Listing', short:'重点低达',
+   dimName:'国家Listing', unit:' 个 Listing', en:true,
    sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &lt;70% 且 最新周·加权达成 &lt;70%',
    pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1<0.7 && m.wrateL1<0.7; }},
   {n:6, id:'hiHost', scopeId:'s5hiScope', name:'重点超达 Listing', short:'重点超达',
+   dimName:'国家Listing', unit:' 个 Listing', en:true,
    sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &gt;110% 且 最新周·加权达成 &gt;100%',
    pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0; }}
 ];
@@ -4525,6 +4542,8 @@ var LST_SECTIONS=[
 var LST_ST={};
 var LST_OPEN={};
 LST_SECTIONS.forEach(function(s){
+  /* 三个板块统一：全列 + 4周订单降序（与 05/06 一致）；
+     05 三级分类只是把分组维度换成 c3、列集去掉淘汰个数列 */
   LST_ST[s.n]={sort:'q',dir:-1,fs:false,f:{},tx:{},expand:false,cg:'all'};
   LST_OPEN[s.n]={};
 });
@@ -4544,34 +4563,41 @@ function lstTxBtn(n,k,st,vals,label){
     ' data-vals="'+String(vj).replace(/"/g,'&quot;')+'" title="'+(label||'')+' 筛选">'+
     (cur.length? cur.length+' 项':'全部')+' <i>▾</i></button>';
 }
-/* 05/06 的列定义 = 04 国家Listing 层（含 三级分类 / 销售负责人 + 场景构成）
-   v95：在「SKU数」之后插入「已剔除SKU个数」列（本 Listing 名下被剔除的淘汰 SKU 个数，可点开明细） */
-function lstAllCols(){
-  const base=[DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(DIM_EXTRA[3]||[], DIM_ALLCOLS.slice(2));
+/* 05/06 的列定义 = 04 对应维度层（带出另一维度的归属值 + 场景构成）
+   kind='lst' → 国家Listing 层（三级分类 / 销售负责人）；kind='c3' → 三级分类层（销售负责人）
+   v95：Listing 形态在「SKU数」之后插入「已剔除SKU个数」列；v97 三级分类形态不带该列 */
+function lstAllCols(kind){
+  const isC3=(kind==='c3');
+  const base=[DIM_ALLCOLS[0], DIM_ALLCOLS[1]]
+    .concat((isC3?DIM_EXTRA[2]:DIM_EXTRA[3])||[], DIM_ALLCOLS.slice(2));
   const out=[];
   base.forEach(function(c){
     out.push(c);
-    if(c.k==='n') out.push({k:'en', t:'已剔除SKU个数', type:'int', g:'scale',
+    if(!isC3 && c.k==='n') out.push({k:'en', t:'已剔除SKU个数', type:'int', g:'scale',
       tip:'该 Listing 下「SKU状态=淘汰」已被剔除的 SKU 个数；不计入 SKU数 与任何指标，点击数字看明细'});
   });
   return out;
 }
-function lstColsOf(n){
-  const all=lstAllCols();
-  const cg=(LST_ST[n]&&LST_ST[n].cg)||'rate+profit';
+function lstColsOf(S){
+  const all=lstAllCols(S&&S.f);
+  const cg=(LST_ST[S.n]&&LST_ST[S.n].cg)||'rate+profit';
   const base=(cg==='all')?all:all.filter(function(c){ return !c.g||c.g==='dim'||cg.split('+').indexOf(c.g)>=0; });
-  return colxCols('lst'+n, base);
+  return colxCols('lst'+S.n, base);
 }
 /* 在售口径：显式剔除淘汰 SKU，不依赖全局「SKU状态」筛选 */
 function lstOnSaleRows(){
   return baseRows().filter(function(r){ return r.elim===0; });
 }
 /* v95：groupBy 之后统一挂上 _en（本 Listing 的淘汰 SKU 个数），
-   渲染 / 筛选 / 排序 / 导出全部读这一个字段，避免各处自己再算一遍 */
-function lstAllGroups(){
-  const gs=groupBy(lstOnSaleRows(),'lst');
+   渲染 / 筛选 / 排序 / 导出全部读这一个字段，避免各处自己再算一遍
+   v97：dim 传 'c3' 时按三级分类聚合，且不挂 _en（该形态没有淘汰数列） */
+function lstAllGroups(dim){
+  const d=dim||'lst';
+  const gs=groupBy(lstOnSaleRows(),d);
   const em=lstElimByLst();
-  gs.forEach(function(g){ g.m._en=(em[String(g.k)]||[]).length; });
+  if(d==='lst'){
+    gs.forEach(function(g){ g.m._en=(em[String(g.k)]||[]).length; });
+  }
   lstAllGroups._emap=em;
   return gs;
 }
@@ -4598,13 +4624,14 @@ function renderLstBlock(S){
   const _sy=window.scrollY;
   st.f=st.f||{}; st.tx=st.tx||{};
 
-  const allGroups=lstAllGroups();
+  const allGroups=lstAllGroups(S.f);
   const groups=allGroups.filter(function(g){ return S.pick(g.m); });
+  const isEn=(S.en!==false);
   const chip=document.getElementById(S.scopeId);
-  if(chip) chip.textContent=nf(groups.length)+' 个 Listing';
+  if(chip) chip.textContent=nf(groups.length)+(S.unit||' 个 Listing');
 
   const sumRows=groups.reduce(function(a,g){ return a.concat(g.rows); },[]);
-  const elimRows=lstElimRows(groups);
+  const elimRows=isEn?lstElimRows(groups):[];
   const elimMap=lstAllGroups._emap||lstElimByLst();
   renderLstBlock._elim=renderLstBlock._elim||{};
   renderLstBlock._elim[n]=elimRows;
@@ -4612,7 +4639,7 @@ function renderLstBlock(S){
   renderLstBlock._emap[n]=elimMap;
   const all=M(agg(sumRows));
   /* _en 已在 lstAllGroups() 里挂好；合计行单独挂，点它等价于板块头那个汇总入口 */
-  all._en=elimRows.length;
+  if(isEn) all._en=elimRows.length;
   const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k]&&String(st.f[k]).trim(); });
   const txCnt=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; }).length;
   const gNames=groups.map(function(g){ return String(g.k); });
@@ -4628,7 +4655,7 @@ function renderLstBlock(S){
   h+='<div class="subblock-head">'+
      '<h3><span class="sn">'+n+'</span>'+S.name+'</h3>'+
      '<span class="cnt">'+nf(groups.length)+' 项 · '+nf(sumRows.length)+' SKU</span>'+
-     (elimRows.length?'<button class="lelim" data-lelim="'+n+'" title="这 '+groups.length+' 个 Listing 下因 SKU 状态为「淘汰」而剔除的 SKU，点击查看明细（含全字段）">已剔除淘汰 <b>'+nf(elimRows.length)+'</b> 个</button>':'')+
+     (isEn&&elimRows.length?'<button class="lelim" data-lelim="'+n+'" title="这 '+groups.length+' 个 Listing 下因 SKU 状态为「淘汰」而剔除的 SKU，点击查看明细（含全字段）">已剔除淘汰 <b>'+nf(elimRows.length)+'</b> 个</button>':'')+
      '<button class="fbtn'+(st.fs?' on':'')+((fKeys.length+txCnt)?' has':'')+'" data-lfbtn="'+n+'" title="展开列筛选：数值列选符号 + 填数值；文本列点「全部 ▾」多选；打标列选档位">筛选'+((fKeys.length+txCnt)?' '+(fKeys.length+txCnt):'')+'</button>'+
      '<span class="cgseg" data-lcgseg="'+n+'" title="按用途只显示相关列；导出跟随当前选择">'+['all','scale','rate','profit','inv'].map(function(g){
         const on=(g==='all')?(st.cg==='all'):(st.cg!=='all'&&st.cg.split('+').indexOf(g)>=0);
@@ -4644,7 +4671,7 @@ function renderLstBlock(S){
      '</div>';
 
   /* 排序 */
-  const cols=lstColsOf(n);
+  const cols=lstColsOf(S);
   const exCols=DIM_EXTRA[3]||[];
   const exVals={c3x:Object.keys(all.c3c||{}), ownx:Object.keys(all.ownc||{})};
   const sortKey=st.sort||'q', dir=st.dir===1?1:-1;
@@ -4681,7 +4708,7 @@ function renderLstBlock(S){
   h+='<div class="tbl-wrap"><table class="dt"><thead><tr>';
   cols.forEach(function(c){
     if(c.k==='_rk')    h+='<th style="width:30px">#</th>';
-    else if(c.k==='_name') h+='<th class="l">国家Listing</th>';
+    else if(c.k==='_name') h+='<th class="l">'+(S.dimName||'国家Listing')+'</th>';
     else if(c.type==='txt') h+='<th class="l">'+c.t+'</th>';
     else if(c.type==='tag') h+='<th class="l" style="width:'+(c.w||72)+'px">'+c.t+'</th>';
     else if(c.k==='sc')  h+='<th class="l" style="width:112px">'+c.t+'</th>';
@@ -4708,7 +4735,7 @@ function renderLstBlock(S){
     cols.forEach(function(c){
       if(c.k==='_name'){
         h+='<td class="l nm"><span class="lnm" title="'+lstEsc(key)+'">'+lstEsc(key)+'</span>'+
-           '<button class="lstexp'+(open?' on':'')+'" data-lexp="'+n+':'+lstEsc(key)+'" title="'+(open?'收起':'展开')+'该 Listing 下的 SKU 明细">'+(open?LST_CHEV_UP:LST_CHEV)+'</button></td>';
+           '<button class="lstexp'+(open?' on':'')+'" data-lexp="'+n+':'+lstEsc(key)+'" title="'+(open?'收起':'展开')+'该'+(S.dimName||'Listing')+'下的 SKU 明细">'+(open?LST_CHEV_UP:LST_CHEV)+'</button></td>';
         return;
       }
       h+=dimCell(c,m,ctx);
@@ -4718,7 +4745,7 @@ function renderLstBlock(S){
       h+='<tr class="lst-exp-row"><td colspan="'+cols.length+'">'+lstSkuTable(g.rows)+'</td></tr>';
     }
   });
-  if(!shown.length) h+='<tr><td colspan="'+cols.length+'" style="padding:22px;text-align:center;color:var(--muted)">没有符合筛选条件的 Listing —— 点上方「清除筛选」恢复，或修改条件</td></tr>';
+  if(!shown.length) h+='<tr><td colspan="'+cols.length+'" style="padding:22px;text-align:center;color:var(--muted)">没有符合筛选条件的'+(S.dimName||'Listing')+' —— 点上方「清除筛选」恢复，或修改条件</td></tr>';
   h+='</tbody><tfoot><tr>'+cols.map(function(c){
     if(c.k==='_rk') return '<td class="l"></td>';
     if(c.k==='_name') return '<td class="l">合计 / 加权'+(fKeys.length?'（已筛选）':'')+'</td>';
@@ -4857,9 +4884,10 @@ function bindLst(host,S){
 
 /* 05/06 汇总导出：列取 lstColsOf（跟随列分组 / 自定义列），取值与页面同一套 dimTxtVal */
 function exportLstSum(S, groups, all){
-  const cols=lstColsOf(S.n);
+  const cols=lstColsOf(S);
   const totQ=all.q||1;
-  const lines=[cols.map(function(c){ return csvCell(c.k==='_name'?'国家Listing':c.t); }).join(',')];
+  const nmC=(S&&S.dimName)||'国家Listing';
+  const lines=[cols.map(function(c){ return csvCell(c.k==='_name'?nmC:c.t); }).join(',')];
   groups.forEach(function(g,idx){
     lines.push(cols.map(function(c){ return csvCell(dimTxtVal(c,g,idx+1,totQ)); }).join(','));
   });
@@ -5055,7 +5083,11 @@ const COLX={scope:null, draft:null, cols:[], btn:null};
 function colxMeta(scope){
   if(scope==='scn'||scope==='sd') return SCN_COLS.map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
   if(scope==='sku'||scope==='skm') return SKU_COLS.map(function(c){ return {c:c[0],t:c[1],g:c[3]||'dim'}; }).map(function(c){ return {k:c.c,t:c.t,g:c.g}; });
-  if(String(scope).indexOf('lst')===0) return lstAllCols().map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
+  if(String(scope).indexOf('lst')===0){
+    const sn=+String(scope).slice(3);
+    const S=LST_SECTIONS.filter(function(x){ return x.n===sn; })[0];
+    return lstAllCols(S&&S.f).map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
+  }
   const i=+String(scope).slice(3);
   const ex=DIM_EXTRA[i]||[];
   const all = ex.length ? [DIM_ALLCOLS[0], DIM_ALLCOLS[1]].concat(ex, DIM_ALLCOLS.slice(2)) : DIM_ALLCOLS;
@@ -6105,7 +6137,9 @@ function renderFoot(){
       `<b>02 七张卡</b>：<b>核心异常</b>＝命中 P0+P1 的 SKU 数，副标是它占有效池与占全部 SKU 的比例；<b>板块标题右侧四个数（重点层 / P0 / P1 / 批量层）都可点</b>，分别打开对应的 SKU 清单；<b>P0</b>＝立办，只有「毛利倒挂」与「超达断货且调拨未跟上」两条，一个 SKU 只记一条主因；<b>超达</b>＝重点层达成 ≥110%，副标「调拨未跟上」＝其中平台仓断货但调拨建议不是「断货可调入」；<b>低达</b>＝重点层达成 &lt;90%，副标「零动作」＝其中无建议提报且广告无建议；<b>利润异常</b>＝重点层毛利率 &lt;8%（&lt;0 为倒挂）；<b>库存异常</b>＝重点层断货（平台仓 ≤0）或压货（&gt;70 天 / 连续重度）；<b>僵尸库存</b>＝全盘 7DMS=0 但平台仓有货，副标「死库存」＝其中 4 周零订单。副标两项之和大于主数，是因为一个 SKU 可同时命中多条条件。`,
       `<b>周均缺口</b>：缺口＝Σ4周订单 − Σ4周最新版预测，负＝缺口（订单没达到预测，绿色），正＝超达（红色）。除以 4 得周均，全盘 11,337 − 16,982 ＝ −5,645 件，周均 −1,411.3 件/周。按周拆开就是 W41 −999、W42 −2,084、W43 −1,595、W44 −967；01 洞察卡的「缺口拆解」逐周列出，可以定位是哪一周掉下来的。`, 
       `<b>03 场景</b>：取明细表「场景类型-最新」（判定条件见源表「输出逻辑」页）——淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率 &lt;95% 且可售 &gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。一个 SKU 只落一个场景，六场景相加＝全盘。`,
-      `<b>03 交叉表</b>：矩阵行是维度值、列是六个场景，格内 SKU 数 · 4周订单，底色按本场景内归一；下方全字段表一行＝一个「维度值 × 场景」组合，列同上表（24 列，可分组），合计与上表逐位对齐。点格子 / 点维度值 / 点场景表头可收窄，✕ 取消；维度值超 14 项默认列前 14（按订单降序）。`
+      `<b>03 交叉表</b>：矩阵行是维度值、列是六个场景，格内 SKU 数 · 4周订单，底色按本场景内归一；下方全字段表一行＝一个「维度值 × 场景」组合，列同上表（24 列，可分组），合计与上表逐位对齐。点格子 / 点维度值 / 点场景表头可收窄，✕ 取消；维度值超 14 项默认列前 14（按订单降序）。`,
+      `<b>05 重点低达 三级分类</b>：在售 SKU 口径（剔除淘汰），按三级分类聚合——同一分类下的 SKU 先求和，再算最新周·最新版达成与最新周·加权达成；只保留两项都 &lt;70% 的分类。列、筛选、排序、列分组、自定义列、导出与 04 三级分类层同一套（带销售负责人，不带淘汰个数列）；点行名后的箭头可展开该分类下的 SKU 明细。`,
+      `<b>06 / 07 重点低达 / 超达 Listing</b>：同一口径下沉到国家 Listing——06 低达＝两项都 &lt;70%，07 超达＝最新版达成 &gt;110% 且 加权达成 &gt;100%；「已剔除淘汰 N 个」与行内「已剔除SKU个数」列出该 Listing 名下因 SKU状态=淘汰而剔除的 SKU，点击看全字段明细。`
     ]},
     {h:'交互与导出', items:[
       `<b>列分组</b>：03 / 04 / SKU 末层的「全部 / 规模 / 达成 / 利润 / 库存」可多选，导出跟随当前选择；04 默认「达成 + 利润」（17 列）。<b>自定义列</b>：表右上角「自定义列」可逐列勾选（可按名称搜索），底部「全选 / 清空 / 默认 / 应用全局 / 完成」——「应用全局」把同一套列应用到所有表，「默认」回到列分组预设；设置记在本地，刷新后保持。`,
