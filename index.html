@@ -1666,6 +1666,8 @@ tr.lst-exp-row>td{padding:0;background:#fafbfe;border-top:1px dashed var(--borde
 .lst-sub .rchip,.lst-sub .tagc{font-size:10px}
 .lst-sub-wrap>.tbl-wrap{max-height:none}
 
+.streak-chip{display:inline-block;white-space:nowrap;padding:2px 7px;border-radius:10px;border:1px solid #f0caca;background:#fff1f1;color:#b54040;font-size:11px;font-weight:700}.streak-chip.hi{border-color:#c9e2d7;background:#effaf4;color:#287b5b}.streak-chip.low{border-color:#f0caca;background:#fff1f1;color:#b54040}
+
 </style>
 </head>
 <body>
@@ -1857,6 +1859,15 @@ tr.lst-exp-row>td{padding:0;background:#fafbfe;border-top:1px dashed var(--borde
           <div class="btitle"><span class="bnum">07</span><h2>重点超达 Listing</h2><span class="cnt" id="s5hiScope"></span></div>
         </div>
         <div id="hiHost"></div>
+      </section>
+
+      <!-- 08 连续低达 / 超达 Listing：逐周判定，展示最近连续周数 -->
+      <section class="block" id="secStreak">
+        <div class="block-head">
+          <div class="btitle"><span class="bnum">08</span><h2>连续低达 / 超达 Listing</h2><span class="cnt" id="s8Scope"></span></div>
+        </div>
+        <div id="streakLowHost"></div>
+        <div id="streakHiHost"></div>
       </section>
 
       <footer id="secFoot">
@@ -2331,6 +2342,7 @@ const NAV=[
   {id:'secLowCat', n:'05', t:'重点低达三级分类', ic:'layers'},
   {id:'secLow', n:'06', t:'重点低达Listing', ic:'layers'},
   {id:'secHi',  n:'07', t:'重点超达Listing', ic:'layers'},
+  {id:'secStreak', n:'08', t:'连续低达/超达Listing', ic:'layers'},
   {id:'secFoot', t:'口径与说明', ic:'info'}
 ];
 let ACTIVE_NAV=null;
@@ -4535,7 +4547,15 @@ var LST_SECTIONS=[
   {n:6, id:'hiHost', scopeId:'s5hiScope', name:'重点超达 Listing', short:'重点超达',
    dimName:'国家Listing', unit:' 个 Listing', en:true,
    sub:'在售 SKU 口径（剔除淘汰）｜最新周·最新版达成 &gt;110% 且 最新周·加权达成 &gt;100%',
-   pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0; }}
+   pick:function(m){ return m.rateL1!=null && m.wrateL1!=null && m.rateL1>1.1 && m.wrateL1>1.0; }},
+  {n:8, id:'streakLowHost', scopeId:'s8LowScope', name:'连续低达 Listing', short:'连续低达',
+   dimName:'国家Listing', unit:' 个 Listing', en:true, streak:'low', sn:'08-A',
+   sub:'逐周判定｜从最新周向前，最新版达成 &lt;70% 且加权达成 &lt;70%；至少连续 2 周',
+   pick:function(m){ return (m._streak||0)>=2; }},
+  {n:9, id:'streakHiHost', scopeId:'s8HiScope', name:'连续超达 Listing', short:'连续超达',
+   dimName:'国家Listing', unit:' 个 Listing', en:true, streak:'hi', sn:'08-B',
+   sub:'逐周判定｜从最新周向前，最新版达成 &gt;110% 且加权达成 &gt;100%；至少连续 2 周',
+   pick:function(m){ return (m._streak||0)>=2; }}
 ];
 
 /* 每个板块一份独立视图状态：排序 / 筛选 / 列分组 / 展开 */
@@ -4544,7 +4564,7 @@ var LST_OPEN={};
 LST_SECTIONS.forEach(function(s){
   /* 三个板块统一：全列 + 4周订单降序（与 05/06 一致）；
      05 三级分类只是把分组维度换成 c3、列集去掉淘汰个数列 */
-  LST_ST[s.n]={sort:'q',dir:-1,fs:false,f:{},tx:{},expand:false,cg:'all'};
+  LST_ST[s.n]={sort:(s.streak?'streak':'q'),dir:-1,fs:false,f:{},tx:{},expand:false,cg:'all'};
   LST_OPEN[s.n]={};
 });
 
@@ -4566,20 +4586,37 @@ function lstTxBtn(n,k,st,vals,label){
 /* 05/06 的列定义 = 04 对应维度层（带出另一维度的归属值 + 场景构成）
    kind='lst' → 国家Listing 层（三级分类 / 销售负责人）；kind='c3' → 三级分类层（销售负责人）
    v95：Listing 形态在「SKU数」之后插入「已剔除SKU个数」列；v97 三级分类形态不带该列 */
-function lstAllCols(kind){
+function lstStreak(m, kind){
+  const q=m.qw||[], f=m.fw||[], wf=m.wfw||[];
+  let n=0;
+  for(let i=q.length-1;i>=0;i--){
+    const qq=Number(q[i]||0), ff=Number(f[i]||0), ww=Number(wf[i]||0);
+    if(!ff || !ww) break;
+    const a=qq/ff, b=qq/ww;
+    if(kind==='low' ? (a<0.7 && b<0.7) : (a>1.1 && b>1.0)) n++;
+    else break;
+  }
+  return n;
+}
+function lstStreakLabel(m, kind){
+  const n=m._streak||0;
+  return n>=2 ? '连续'+n+'周'+(kind==='low'?'低达':'超达') : '—';
+}
+function lstAllCols(kind, streak){
   const isC3=(kind==='c3');
   const base=[DIM_ALLCOLS[0], DIM_ALLCOLS[1]]
     .concat((isC3?DIM_EXTRA[2]:DIM_EXTRA[3])||[], DIM_ALLCOLS.slice(2));
   const out=[];
   base.forEach(function(c){
     out.push(c);
+    if(streak && c.k==='_name') out.push({k:'streak', t:'连续周数', type:'streak', g:'rate', tip:'从最新周向前逐周判断，显示最近连续低达或超达周数'});
     if(!isC3 && c.k==='n') out.push({k:'en', t:'已剔除SKU个数', type:'int', g:'scale',
       tip:'该 Listing 下「SKU状态=淘汰」已被剔除的 SKU 个数；不计入 SKU数 与任何指标，点击数字看明细'});
   });
   return out;
 }
 function lstColsOf(S){
-  const all=lstAllCols(S&&S.f);
+  const all=lstAllCols(S&&S.f, !!(S&&S.streak));
   const cg=(LST_ST[S.n]&&LST_ST[S.n].cg)||'rate+profit';
   const base=(cg==='all')?all:all.filter(function(c){ return !c.g||c.g==='dim'||cg.split('+').indexOf(c.g)>=0; });
   return colxCols('lst'+S.n, base);
@@ -4625,6 +4662,7 @@ function renderLstBlock(S){
   st.f=st.f||{}; st.tx=st.tx||{};
 
   const allGroups=lstAllGroups(S.f);
+  if(S.streak) allGroups.forEach(function(g){ g.m._streak=lstStreak(g.m,S.streak); g.m._streakKind=S.streak; });
   const groups=allGroups.filter(function(g){ return S.pick(g.m); });
   const isEn=(S.en!==false);
   const chip=document.getElementById(S.scopeId);
@@ -4643,6 +4681,7 @@ function renderLstBlock(S){
   const fKeys=Object.keys(st.f).filter(function(k){ return st.f[k]&&String(st.f[k]).trim(); });
   const txCnt=Object.keys(st.tx).filter(function(k){ return (st.tx[k]||[]).length; }).length;
   const gNames=groups.map(function(g){ return String(g.k); });
+  if(S.streak) groups.forEach(function(g){ g.m._streakKind=S.streak; });
 
   if(!groups.length){
     host.innerHTML='<div class="empty" style="padding:20px 6px;line-height:2;text-align:center">'+
@@ -4653,7 +4692,7 @@ function renderLstBlock(S){
 
   let h='<div class="subblock lst-sec" id="lst'+n+'">';
   h+='<div class="subblock-head">'+
-     '<h3><span class="sn">'+n+'</span>'+S.name+'</h3>'+
+     '<h3><span class="sn">'+(S.sn||n)+'</span>'+S.name+'</h3>'+
      '<span class="cnt">'+nf(groups.length)+' 项 · '+nf(sumRows.length)+' SKU</span>'+
      (isEn&&elimRows.length?'<button class="lelim" data-lelim="'+n+'" title="这 '+groups.length+' 个 Listing 下因 SKU 状态为「淘汰」而剔除的 SKU，点击查看明细（含全字段）">已剔除淘汰 <b>'+nf(elimRows.length)+'</b> 个</button>':'')+
      '<button class="fbtn'+(st.fs?' on':'')+((fKeys.length+txCnt)?' has':'')+'" data-lfbtn="'+n+'" title="展开列筛选：数值列选符号 + 填数值；文本列点「全部 ▾」多选；打标列选档位">筛选'+((fKeys.length+txCnt)?' '+(fKeys.length+txCnt):'')+'</button>'+
@@ -4675,7 +4714,7 @@ function renderLstBlock(S){
   const exCols=DIM_EXTRA[3]||[];
   const exVals={c3x:Object.keys(all.c3c||{}), ownx:Object.keys(all.ownc||{})};
   const sortKey=st.sort||'q', dir=st.dir===1?1:-1;
-  const getter={q:g=>g.m.q,qp:g=>g.m.q,f:g=>g.m.f||0,rate:g=>g.m.rate,n:g=>g.m.n,en:g=>g.m._en||0,pr:g=>g.m.pr,
+  const getter={q:g=>g.m.q,qp:g=>g.m.q,f:g=>g.m.f||0,rate:g=>g.m.rate,n:g=>g.m.n,en:g=>g.m._en||0,streak:g=>g.m._streak||0,pr:g=>g.m.pr,
     rateL1:g=>g.m.rateL1,wrateL1:g=>g.m.wrateL1,wrate4:g=>g.m.wrate4,
     days:g=>g.m.days,gap:g=>g.m.gapW,
     invP:g=>g.m.invP,invS:g=>g.m.invS,whp:g=>g.m.whp,adp:g=>g.m.adp,acos:g=>g.m.acos,
@@ -4729,7 +4768,7 @@ function renderLstBlock(S){
   h+='</thead><tbody>';
   shown.forEach(function(g,idx){
     const m=g.m, key=String(g.k);
-    const ctx={i:3, rank:idx+1, name:key, all:all, lstN:n};
+    const ctx={i:3, rank:idx+1, name:key, all:all, lstN:n, streak:S.streak};
     const open=!!LST_OPEN[n][key];
     h+='<tr class="lst-row">';
     cols.forEach(function(c){
@@ -4974,6 +5013,10 @@ function dimCell(c, m, ctx){
     }
     case 'n':     return '<td>'+nf(m.n)+'</td>';
     /* v95：05/06 行内「淘汰数」，放在 SKU数 之后；点数字看该 Listing 的淘汰 SKU 明细 */
+    case 'streak': {
+      const v=m._streak||0;
+      return '<td><span class="streak-chip '+(ctx.streak==='hi'?'hi':'low')+'">'+lstStreakLabel(m,ctx.streak)+'</span></td>';
+    }
     case 'en': {
       const v=m._en||0;
       if(!v) return '<td class="en0">0</td>';
@@ -5019,7 +5062,7 @@ function dimTopTxt(m,key){
 const DIMCOL_TYPE={}; DIMCOLS.forEach(function(c){ DIMCOL_TYPE[c.k]=c.type; });
 /* ---- 维度层筛选（v42）：所有列都可筛 ---- */
 /* 非 DIMCOLS 的列：组名（文本）、三类组级打标、场景构成（文本） */
-const DIMF_TYPE={__g:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt', c3x:'txt', ownx:'txt'};
+const DIMF_TYPE={__g:'txt', streak:'txt', tagR:'tag', tagP:'tag', tagD:'tag', sc:'txt', c3x:'txt', ownx:'txt'};
 DIMCOLS.forEach(function(c){ DIMF_TYPE[c.k]=c.type; });
 /* 数值列的下拉候选（点输入框右侧箭头可展开，也可直接手输任意表达式） */
 const DIMF_HINT={
@@ -5036,6 +5079,7 @@ const DIMF_HINT={
 function dimFVal(g,k,totQ){
   if(k==='__g')  return String(g.k);
   if(k==='en')   return g.m._en||0;
+  if(k==='streak') return lstStreakLabel(g.m, g.m._streakKind||'low');
   if(k==='tagR') return tagR(g.m.rate).k;
   if(k==='tagP') return tagP(g.m.pr).k;
   if(k==='tagD') return tagD(g.m.days, g.m.invP).k;
@@ -5086,7 +5130,7 @@ function colxMeta(scope){
   if(String(scope).indexOf('lst')===0){
     const sn=+String(scope).slice(3);
     const S=LST_SECTIONS.filter(function(x){ return x.n===sn; })[0];
-    return lstAllCols(S&&S.f).map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
+    return lstAllCols(S&&S.f, !!(S&&S.streak)).map(function(c){ return {k:c.k,t:c.t,g:c.g||'dim'}; });
   }
   const i=+String(scope).slice(3);
   const ex=DIM_EXTRA[i]||[];
@@ -5976,6 +6020,7 @@ function dimTxtVal(c,g,rank,totQ,totN){
     case '_name':  return g.k;
     case 'n':      return m.n;
     case 'en':     return m._en||0;
+    case 'streak': return lstStreakLabel(m, m._streakKind||'low');
     case 'q':      return m.q;
     case 'qp':     return totQ?p1(m.q/totQ):'';
     case 'f':      return i0(m.f);
@@ -6139,7 +6184,8 @@ function renderFoot(){
       `<b>03 场景</b>：取明细表「场景类型-最新」（判定条件见源表「输出逻辑」页）——淘汰（淘汰标签）、压货预警（M1-M2 连续重度压货）、压货提销（达成率 &lt;95% 且可售 &gt;70 天）、冲坑（低达 &lt;90% 或预测环比大增）、利润改善（毛利率偏低）、其他。一个 SKU 只落一个场景，六场景相加＝全盘。`,
       `<b>03 交叉表</b>：矩阵行是维度值、列是六个场景，格内 SKU 数 · 4周订单，底色按本场景内归一；下方全字段表一行＝一个「维度值 × 场景」组合，列同上表（24 列，可分组），合计与上表逐位对齐。点格子 / 点维度值 / 点场景表头可收窄，✕ 取消；维度值超 14 项默认列前 14（按订单降序）。`,
       `<b>05 重点低达 三级分类</b>：在售 SKU 口径（剔除淘汰），按三级分类聚合——同一分类下的 SKU 先求和，再算最新周·最新版达成与最新周·加权达成；只保留两项都 &lt;70% 的分类。列、筛选、排序、列分组、自定义列、导出与 04 三级分类层同一套（带销售负责人，不带淘汰个数列）；点行名后的箭头可展开该分类下的 SKU 明细。`,
-      `<b>06 / 07 重点低达 / 超达 Listing</b>：同一口径下沉到国家 Listing——06 低达＝两项都 &lt;70%，07 超达＝最新版达成 &gt;110% 且 加权达成 &gt;100%；「已剔除淘汰 N 个」与行内「已剔除SKU个数」列出该 Listing 名下因 SKU状态=淘汰而剔除的 SKU，点击看全字段明细。`
+      `<b>06 / 07 重点低达 / 超达 Listing</b>：同一口径下沉到国家 Listing——06 低达＝两项都 &lt;70%，07 超达＝最新版达成 &gt;110% 且 加权达成 &gt;100%；「已剔除淘汰 N 个」与行内「已剔除SKU个数」列出该 Listing 名下因 SKU状态=淘汰而剔除的 SKU，点击看全字段明细。`,
+      `<b>08 连续低达 / 超达 Listing</b>：逐周从最新周向前判断，低达要求当周最新版达成 &lt;70% 且加权达成 &lt;70%，超达要求当周最新版达成 &gt;110% 且加权达成 &gt;100%；只展示最近连续至少 2 周的 Listing，行内「连续周数」标签会显示连续 2 周、3 周或 4 周低达/超达。连续周数越长，优先级越高；预测为 0 或缺失的周不参与连续判定。`
     ]},
     {h:'交互与导出', items:[
       `<b>列分组</b>：03 / 04 / SKU 末层的「全部 / 规模 / 达成 / 利润 / 库存」可多选，导出跟随当前选择；04 默认「达成 + 利润」（17 列）。<b>自定义列</b>：表右上角「自定义列」可逐列勾选（可按名称搜索），底部「全选 / 清空 / 默认 / 应用全局 / 完成」——「应用全局」把同一套列应用到所有表，「默认」回到列分组预设；设置记在本地，刷新后保持。`,
